@@ -31,7 +31,7 @@ const predefinedValues = {
 
 // Render the form page with predefined values
 app.get('/', (req, res) => {
-    res.render('index', { predefinedValues });
+    res.render('index', { predefinedValues, result: null });
 });
 
 // Handle form submission
