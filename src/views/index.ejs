@@ -2,94 +2,156 @@
 <html>
 <head>
     <title>Financial Calculator</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        .income { color: green; }
-        .expense { color: red; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        table, th, td { border: 1px solid black; }
-        th, td { padding: 10px; text-align: center; }
+        .emoji {
+            font-size: 20px;
+        }
+        .income {
+            color: green;
+        }
+        .expense {
+            color: red;
+        }
+        .summary-table {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
-    <h1>Financial Calculator</h1>
-    <form action="/calculate" method="POST">
-        <label for="grossSalary">Gross Salary:</label>
-        <input type="number" id="grossSalary" name="grossSalary" step="0.01" value="<%= predefinedValues.grossSalary %>"><br>
+    <div class="container">
+        <h1 class="my-4">Financial Calculator</h1>
+        <form action="/calculate" method="post" class="form-group">
+            <div class="form-row">
+                <div class="col-md-6 mb-3">
+                    <label for="grossSalary">Gross Salary (₹):</label>
+                    <input type="number" class="form-control" name="grossSalary" id="grossSalary" value="<%= predefinedValues.grossSalary %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="rent">Rent (₹):</label>
+                    <input type="number" class="form-control" name="rent" id="rent" value="<%= predefinedValues.rent %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="food">Food (₹):</label>
+                    <input type="number" class="form-control" name="food" id="food" value="<%= predefinedValues.food %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="licPremium">LIC Premium (₹):</label>
+                    <input type="number" class="form-control" name="licPremium" id="licPremium" value="<%= predefinedValues.licPremium %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="sip">SIP (₹):</label>
+                    <input type="number" class="form-control" name="sip" id="sip" value="<%= predefinedValues.sip %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="ssy">SSY (₹):</label>
+                    <input type="number" class="form-control" name="ssy" id="ssy" value="<%= predefinedValues.ssy %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="nps">NPS (₹):</label>
+                    <input type="number" class="form-control" name="nps" id="nps" value="<%= predefinedValues.nps %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="carEmi">Car EMI (₹):</label>
+                    <input type="number" class="form-control" name="carEmi" id="carEmi" value="<%= predefinedValues.carEmi %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="bankDeposit">Bank Deposit (₹):</label>
+                    <input type="number" class="form-control" name="bankDeposit" id="bankDeposit" value="<%= predefinedValues.bankDeposit %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="parentsExpenses">Parents' Expenses (₹):</label>
+                    <input type="number" class="form-control" name="parentsExpenses" id="parentsExpenses" value="<%= predefinedValues.parentsExpenses %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="commute">Commute (₹):</label>
+                    <input type="number" class="form-control" name="commute" id="commute" value="<%= predefinedValues.commute %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="doctorVisits">Doctor Visits (₹):</label>
+                    <input type="number" class="form-control" name="doctorVisits" id="doctorVisits" value="<%= predefinedValues.doctorVisits %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="supplementsAndClothes">Supplements and Clothes (₹):</label>
+                    <input type="number" class="form-control" name="supplementsAndClothes" id="supplementsAndClothes" value="<%= predefinedValues.supplementsAndClothes %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="unexpectedExpenses">Unexpected Expenses (₹):</label>
+                    <input type="number" class="form-control" name="unexpectedExpenses" id="unexpectedExpenses" value="0">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
 
-        <label for="rent">Rent:</label>
-        <input type="number" id="rent" name="rent" step="0.01" value="<%= predefinedValues.rent %>"><br>
-
-        <label for="food">Food Expenses:</label>
-        <input type="number" id="food" name="food" step="0.01" value="<%= predefinedValues.food %>"><br>
-
-        <label for="licPremium">LIC Premium:</label>
-        <input type="number" id="licPremium" name="licPremium" step="0.01" value="<%= predefinedValues.licPremium %>"><br>
-
-        <label for="sip">SIP:</label>
-        <input type="number" id="sip" name="sip" step="0.01" value="<%= predefinedValues.sip %>"><br>
-
-        <label for="ssy">SSY Contribution:</label>
-        <input type="number" id="ssy" name="ssy" step="0.01" value="<%= predefinedValues.ssy %>"><br>
-
-        <label for="nps">NPS Contribution:</label>
-        <input type="number" id="nps" name="nps" step="0.01" value="<%= predefinedValues.nps %>"><br>
-
-        <label for="carEmi">Car EMI:</label>
-        <input type="number" id="carEmi" name="carEmi" step="0.01" value="<%= predefinedValues.carEmi %>"><br>
-
-        <label for="bankDeposit">Bank Deposit:</label>
-        <input type="number" id="bankDeposit" name="bankDeposit" step="0.01" value="<%= predefinedValues.bankDeposit %>"><br>
-
-        <label for="parentsExpenses">Parents' Home Expenses:</label>
-        <input type="number" id="parentsExpenses" name="parentsExpenses" step="0.01" value="<%= predefinedValues.parentsExpenses %>"><br>
-
-        <label for="commute">Commute Fuel Expenses:</label>
-        <input type="number" id="commute" name="commute" step="0.01" value="<%= predefinedValues.commute %>"><br>
-
-        <label for="doctorVisits">Daughter's Doctor Visits:</label>
-        <input type="number" id="doctorVisits" name="doctorVisits" step="0.01" value="<%= predefinedValues.doctorVisits %>"><br>
-
-        <label for="supplementsAndClothes">Daughter's Supplements and Clothes:</label>
-        <input type="number" id="supplementsAndClothes" name="supplementsAndClothes" step="0.01" value="<%= predefinedValues.supplementsAndClothes %>"><br>
-
-        <label for="unexpectedExpenses">Unexpected Expenses:</label>
-        <input type="number" id="unexpectedExpenses" name="unexpectedExpenses" step="0.01" value="0"><br>
-
-        <button type="submit">Calculate</button>
-    </form>
-
-    <% if (result) { %>
-        <h2>Financial Report</h2>
-        <table>
+        <% if (result) { %>
+        <h2 class="my-4">Results</h2>
+        <table class="table table-bordered summary-table">
             <thead>
                 <tr>
-                    <th>Gross Salary</th>
-                    <th>Tax Deduction</th>
-                    <th>In-Hand Salary</th>
-                    <th>Total Expenses</th>
-                    <th>Unexpected Expenses</th>
-                    <th>Total Monthly Expenses</th>
-                    <th>Remaining Amount</th>
+                    <th>Category</th>
+                    <th>Amount (₹)</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
+                    <th>Gross Salary</th>
                     <td><%= result.grossSalary %></td>
+                </tr>
+                <tr>
+                    <th>Tax Deduction</th>
                     <td><%= result.taxDeduction %></td>
-                    <td><%= result.inHandSalary %></td>
-                    <td><%= result.totalExpenses %></td>
-                    <td><%= result.unexpectedExpenses %></td>
-                    <td><%= result.totalMonthlyExpenses %></td>
-                    <td class="<%= result.remainingAmount < 0 ? 'expense' : 'income' %>">
-                        <%= result.remainingAmount %> <%= result.remainingAmount < 0 ? '🔴' : '🟢' %>
-                    </td>
+                </tr>
+                <tr>
+                    <th>In-Hand Salary</th>
+                    <td class="income"><%= result.inHandSalary %> <span class="emoji">🟢</span></td>
+                </tr>
+                <tr>
+                    <th>Income (Total)</th>
+                    <td class="income"><%= result.totalIncome %> <span class="emoji">🟢</span></td>
+                </tr>
+                <tr>
+                    <th>Expenses (Total)</th>
+                    <td class="expense"><%= result.totalExpenses %> <span class="emoji">🔴</span></td>
+                </tr>
+                <tr>
+                    <th>Unexpected Expenses</th>
+                    <td class="expense"><%= result.unexpectedExpenses %> <span class="emoji">🔴</span></td>
+                </tr>
+                <tr>
+                    <th>Total Monthly Expenses</th>
+                    <td class="expense"><%= result.totalMonthlyExpenses %> <span class="emoji">🔴</span></td>
+                </tr>
+                <tr>
+                    <th>Remaining Amount</th>
+                    <td class="income"><%= result.remainingAmount %> <span class="emoji">🟢</span></td>
                 </tr>
             </tbody>
+            <tfoot>
+                <tr>
+                    <th>Total Summary</th>
+                    <th></th>
+                </tr>
+                <tr>
+                    <th>Total Income</th>
+                    <td class="income"><%= result.totalIncome %> <span class="emoji">🟢</span></td>
+                </tr>
+                <tr>
+                    <th>Total Expenses</th>
+                    <td class="expense"><%= result.totalExpenses %> <span class="emoji">🔴</span></td>
+                </tr>
+                <tr>
+                    <th>Remaining Amount</th>
+                    <td class="income"><%= result.remainingAmount %> <span class="emoji">🟢</span></td>
+                </tr>
+            </tfoot>
         </table>
-    <% } %>
+        <% } %>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
-
-
-
-<% %>

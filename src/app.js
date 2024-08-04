@@ -44,19 +44,23 @@ app.post('/calculate', (req, res) => {
     const parseFloatOrDefault = (value, defaultValue) => parseFloat(value) || defaultValue;
 
     const calculateTax = (grossSalary) => {
-        let taxableIncome = grossSalary - 260000; // Assuming 80C and other deductions
-        if (taxableIncome <= 250000) return 0;
+        let taxableIncome = grossSalary - 260000; // Basic exemption limit
+        if (taxableIncome <= 0) return 0;
+
         let tax = 0;
-        if (taxableIncome <= 500000) {
-            tax = (taxableIncome - 250000) * 0.05;
+        if (taxableIncome <= 250000) {
+            tax = taxableIncome * 0.05;
+        } else if (taxableIncome <= 500000) {
+            tax = 250000 * 0.05 + (taxableIncome - 250000) * 0.1;
         } else if (taxableIncome <= 1000000) {
-            tax = 250000 * 0.05 + (taxableIncome - 500000) * 0.2;
+            tax = 250000 * 0.05 + 250000 * 0.1 + (taxableIncome - 500000) * 0.2;
         } else {
-            tax = 250000 * 0.05 + 500000 * 0.2 + (taxableIncome - 1000000) * 0.3;
+            tax = 250000 * 0.05 + 250000 * 0.1 + 500000 * 0.2 + (taxableIncome - 1000000) * 0.3;
         }
         return tax + (tax * 0.04); // Adding 4% health and education cess
     };
 
+    const grossSalaryValue = parseFloatOrDefault(grossSalary, predefinedValues.grossSalary);
     const rentValue = parseFloatOrDefault(rent, predefinedValues.rent);
     const foodValue = parseFloatOrDefault(food, predefinedValues.food);
     const licPremiumValue = parseFloatOrDefault(licPremium, predefinedValues.licPremium);
@@ -75,8 +79,8 @@ app.post('/calculate', (req, res) => {
         carEmiValue + bankDepositValue + parentsExpensesValue + commuteValue + doctorVisitsValue +
         supplementsAndClothesValue;
     const totalMonthlyExpenses = totalExpenses + unexpectedExpensesValue;
-    const taxDeduction = calculateTax(parseFloatOrDefault(grossSalary, predefinedValues.grossSalary));
-    const inHandSalary = parseFloatOrDefault(grossSalary, predefinedValues.grossSalary) - taxDeduction;
+    const taxDeduction = calculateTax(grossSalaryValue);
+    const inHandSalary = grossSalaryValue - taxDeduction;
     const remainingAmount = inHandSalary - totalMonthlyExpenses;
 
     // Prepare CSV data
@@ -94,7 +98,7 @@ app.post('/calculate', (req, res) => {
     });
 
     const csvData = [{
-        grossSalary,
+        grossSalary: grossSalaryValue,
         taxDeduction,
         inHandSalary,
         totalExpenses,
@@ -109,7 +113,7 @@ app.post('/calculate', (req, res) => {
     res.render('index', {
         predefinedValues,
         result: {
-            grossSalary: parseFloatOrDefault(grossSalary, predefinedValues.grossSalary),
+            grossSalary: grossSalaryValue,
             taxDeduction,
             inHandSalary,
             totalExpenses,
