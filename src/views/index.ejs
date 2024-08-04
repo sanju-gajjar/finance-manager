@@ -2,53 +2,94 @@
 <html>
 <head>
     <title>Financial Calculator</title>
+    <style>
+        .income { color: green; }
+        .expense { color: red; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        table, th, td { border: 1px solid black; }
+        th, td { padding: 10px; text-align: center; }
+    </style>
 </head>
 <body>
     <h1>Financial Calculator</h1>
     <form action="/calculate" method="POST">
         <label for="grossSalary">Gross Salary:</label>
-        <input type="number" id="grossSalary" name="grossSalary" step="0.01"><br>
+        <input type="number" id="grossSalary" name="grossSalary" step="0.01" value="<%= predefinedValues.grossSalary %>"><br>
 
         <label for="rent">Rent:</label>
-        <input type="number" id="rent" name="rent" step="0.01"><br>
+        <input type="number" id="rent" name="rent" step="0.01" value="<%= predefinedValues.rent %>"><br>
 
         <label for="food">Food Expenses:</label>
-        <input type="number" id="food" name="food" step="0.01"><br>
+        <input type="number" id="food" name="food" step="0.01" value="<%= predefinedValues.food %>"><br>
 
         <label for="licPremium">LIC Premium:</label>
-        <input type="number" id="licPremium" name="licPremium" step="0.01"><br>
+        <input type="number" id="licPremium" name="licPremium" step="0.01" value="<%= predefinedValues.licPremium %>"><br>
 
         <label for="sip">SIP:</label>
-        <input type="number" id="sip" name="sip" step="0.01"><br>
+        <input type="number" id="sip" name="sip" step="0.01" value="<%= predefinedValues.sip %>"><br>
 
         <label for="ssy">SSY Contribution:</label>
-        <input type="number" id="ssy" name="ssy" step="0.01"><br>
+        <input type="number" id="ssy" name="ssy" step="0.01" value="<%= predefinedValues.ssy %>"><br>
 
         <label for="nps">NPS Contribution:</label>
-        <input type="number" id="nps" name="nps" step="0.01"><br>
+        <input type="number" id="nps" name="nps" step="0.01" value="<%= predefinedValues.nps %>"><br>
 
         <label for="carEmi">Car EMI:</label>
-        <input type="number" id="carEmi" name="carEmi" step="0.01"><br>
+        <input type="number" id="carEmi" name="carEmi" step="0.01" value="<%= predefinedValues.carEmi %>"><br>
 
         <label for="bankDeposit">Bank Deposit:</label>
-        <input type="number" id="bankDeposit" name="bankDeposit" step="0.01"><br>
+        <input type="number" id="bankDeposit" name="bankDeposit" step="0.01" value="<%= predefinedValues.bankDeposit %>"><br>
 
         <label for="parentsExpenses">Parents' Home Expenses:</label>
-        <input type="number" id="parentsExpenses" name="parentsExpenses" step="0.01"><br>
+        <input type="number" id="parentsExpenses" name="parentsExpenses" step="0.01" value="<%= predefinedValues.parentsExpenses %>"><br>
 
         <label for="commute">Commute Fuel Expenses:</label>
-        <input type="number" id="commute" name="commute" step="0.01"><br>
+        <input type="number" id="commute" name="commute" step="0.01" value="<%= predefinedValues.commute %>"><br>
 
         <label for="doctorVisits">Daughter's Doctor Visits:</label>
-        <input type="number" id="doctorVisits" name="doctorVisits" step="0.01"><br>
+        <input type="number" id="doctorVisits" name="doctorVisits" step="0.01" value="<%= predefinedValues.doctorVisits %>"><br>
 
         <label for="supplementsAndClothes">Daughter's Supplements and Clothes:</label>
-        <input type="number" id="supplementsAndClothes" name="supplementsAndClothes" step="0.01"><br>
+        <input type="number" id="supplementsAndClothes" name="supplementsAndClothes" step="0.01" value="<%= predefinedValues.supplementsAndClothes %>"><br>
 
         <label for="unexpectedExpenses">Unexpected Expenses:</label>
-        <input type="number" id="unexpectedExpenses" name="unexpectedExpenses" step="0.01"><br>
+        <input type="number" id="unexpectedExpenses" name="unexpectedExpenses" step="0.01" value="0"><br>
 
         <button type="submit">Calculate</button>
     </form>
+
+    <% if (result) { %>
+        <h2>Financial Report</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Gross Salary</th>
+                    <th>Tax Deduction</th>
+                    <th>In-Hand Salary</th>
+                    <th>Total Expenses</th>
+                    <th>Unexpected Expenses</th>
+                    <th>Total Monthly Expenses</th>
+                    <th>Remaining Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><%= result.grossSalary %></td>
+                    <td><%= result.taxDeduction %></td>
+                    <td><%= result.inHandSalary %></td>
+                    <td><%= result.totalExpenses %></td>
+                    <td><%= result.unexpectedExpenses %></td>
+                    <td><%= result.totalMonthlyExpenses %></td>
+                    <td class="<%= result.remainingAmount < 0 ? 'expense' : 'income' %>">
+                        <%= result.remainingAmount %> <%= result.remainingAmount < 0 ? '🔴' : '🟢' %>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    <% } %>
 </body>
 </html>
+
+
+
+<% %>
