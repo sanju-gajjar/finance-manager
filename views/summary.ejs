@@ -1,0 +1,43 @@
+<!-- summary.ejs -->
+<div id="summaryModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeSummaryPopup()">&times;</span>
+      <h3>View Summary</h3>
+      <select id="summaryMonth">
+        <option disabled selected>Select Month</option>
+        <option>January</option>
+        <option>February</option>
+        <option>March</option>
+        <!-- Add more months as needed -->
+      </select>
+      <select id="summaryYear" onchange="fetchSummary()">
+        <option disabled selected>Select Year</option>
+        <option>2023</option>
+        <option>2024</option>
+        <option>2025</option>
+      </select>
+  
+      <div id="summaryResult">
+        <!-- Summary table will be shown here dynamically -->
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    function fetchSummary() {
+      const month = document.getElementById('summaryMonth').value;
+      const year = document.getElementById('summaryYear').value;
+  
+      if (month && year) {
+        // Fetch or generate summary data (you can replace this with an API call)
+        document.getElementById('summaryResult').innerHTML = `
+          <table>
+            <tr><th>Category</th><th>Amount</th></tr>
+            <tr><td>Food</td><td>${formatINR(1500)}</td></tr>
+            <tr><td>Fuel</td><td>${formatINR(800)}</td></tr>
+          </table>
+        `;
+      }
+    }
+  </script>
+  
