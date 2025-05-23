@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            color: #fff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        h1, h2, h3 {
+            text-align: center;
+        }
+        button {
+            background: #ff7e5f;
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: #feb47b;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #fff;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+        select, input, button {
+            color: #000; /* Ensure text is visible */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #fff;
+            text-align: left;
+        }
+        th {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4); /* Dim background */
+        }
+        .modal-content {
+            background-color: #fff; /* White background for modal */
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            color: #000; /* Ensure text is visible */
+            border-radius: 10px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Expense Tracker</h1>
+        <select id="selectOption">
+            <option value="A">Ashi</option>
+            <option value="S">Sanju</option>
+        </select>
+
+        <button onclick="openModal('expense')">Add Expense</button>
+        <button onclick="openModal('income')">Add Income</button>
+        <button onclick="showSummaryForm()">View Summary</button>
+
+        <div id="modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h3 id="modalTitle">Add Entry</h3>
+                <input type="number" id="amount" placeholder="Amount">
+                <select id="type">
+                    <option disabled selected>Type</option>
+                    <option>Clothes</option>
+                    <option>Food</option>
+                    <option>Other</option>
+                    <option>Saving</option>
+                    <option>Home AHM</option>
+                    <option>Home Torna</option>
+                    <option>Fuel</option>
+                    <option>Recharge</option>
+                    <option>EMI</option>
+                    <option class="income-only" style="display:none;">Salary</option>
+                    <option class="income-only" style="display:none;">Other</option>
+                </select>
+                <input type="text" id="description" placeholder="Description">
+                <button onclick="submitEntry()">Submit</button>
+            </div>
+        </div>
+
+        <div id="summaryForm" style="display:none;">
+            <h3>Get Summary</h3>
+            <select id="month">
+                <option disabled selected>Month</option>
+                <option value="January">January</option>
+                <option value="February">February</option>
+                <option value="March">March</option>
+                <option value="April">April</option>
+                <option value="May">May</option>
+                <option value="June">June</option>
+                <option value="July">July</option>
+                <option value="August">August</option>
+                <option value="September">September</option>
+                <option value="October">October</option>
+                <option value="November">November</option>
+                <option value="December">December</option>
+            </select>
+            <select id="year">
+                <option disabled selected>Year</option>
+                <option value="23">2023</option>
+                <option value="24">2024</option>
+                <option value="25">2025</option>
+                <option value="26">2026</option>
+                <option value="27">2027</option>
+                <option value="28">2028</option>
+                <option value="29">2029</option>
+                <option value="30">2030</option>
+            </select>
+            <button onclick="fetchSummary()">Get Summary</button>
+        </div>
+
+        <div id="summaryResult" style="display:none; background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 10px;">
+            <h3 style="text-align: center;">Summary for <span id="summaryMonthYear"></span></h3>
+            <table>
+                <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>Total Expense</td>
+                    <td>₹<span id="totalExpense"></span></td>
+                </tr>
+                <tr>
+                    <td>Total Income</td>
+                    <td>₹<span id="totalIncome"></span></td>
+                </tr>
+                <tr>
+                    <td>Expense %</td>
+                    <td><span id="expensePercentage"></span>%</td>
+                </tr>
+                <tr>
+                    <td>Income %</td>
+                    <td><span id="incomePercentage"></span>%</td>
+                </tr>
+                <tr>
+                    <td>Top Expense Category</td>
+                    <td><span id="topCategory"></span></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <script src="/script.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        function openModal(type) {
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modalTitle');
+            const typeOptions = document.querySelectorAll('#type option');
+
+            modal.style.display = 'block';
+            modalTitle.textContent = type === 'income' ? 'Add Income' : 'Add Expense';
+
+            typeOptions.forEach(option => {
+                if (type === 'income') {
+                    option.style.display = option.classList.contains('income-only') ? 'block' : 'none';
+                } else {
+                    option.style.display = option.classList.contains('income-only') ? 'none' : 'block';
+                }
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function formatINR(amount) {
+            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
+        }
+
+        async function fetchSummary() {
+            const month = document.getElementById('month').value;
+            const year = document.getElementById('year').value;
+            const user = document.getElementById('selectOption').value;
+
+            try {
+                const response = await fetch(`/summary?month=${month}&year=${year}&user=${user}`);
+                const summary = await response.json();
+
+                if (!summary.success) {
+                    alert(summary.message || 'No data found for the selected period.');
+                    return;
+                }
+
+                document.getElementById('totalExpense').textContent = formatINR(summary.totalExpense);
+                document.getElementById('totalIncome').textContent = formatINR(summary.totalIncome);
+                document.getElementById('expensePercentage').textContent = summary.expensePercentage.toFixed(2);
+                document.getElementById('incomePercentage').textContent = summary.incomePercentage.toFixed(2);
+                document.getElementById('topCategory').textContent = summary.topCategory;
+
+                document.getElementById('summaryMonthYear').textContent = `${month} ${year}`;
+                document.getElementById('summaryResult').style.display = 'block';
+            } catch (error) {
+                console.error('Error fetching summary:', error);
+                alert('Failed to fetch summary. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>
