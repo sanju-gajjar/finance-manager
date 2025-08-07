@@ -1,85 +1,89 @@
 const express = require('express');
-const XLSX = require('xlsx');
 const bodyParser = require('body-parser');
 const path = require('path');
+const { Pool } = require('pg');
 
 const app = express();
-const port = 3001;
-const excelPath = path.join(__dirname, 'data.xlsx');
+const port = 3002;
+
+// Use environment variable for connection string
+const isProduction = process.env.NODE_ENV === 'production';
+const connectionString = isProduction
+    ? process.env.PG_INTERNAL_URL // Set this in your Render.com environment
+    : process.env.PG_EXTERNAL_URL;
+
+const pool = new Pool({
+    connectionString,
+    ssl: { rejectUnauthorized: false }
+});
 
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-function getMonthSheetName(month, year) {
-    return `${month}-${year}`;
+// Ensure table exists
+async function ensureTable() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS entries (
+            id SERIAL PRIMARY KEY,
+            user_code VARCHAR(2) NOT NULL,
+            entry_date DATE NOT NULL,
+            type VARCHAR(50) NOT NULL,
+            description TEXT,
+            amount NUMERIC NOT NULL,
+            entry_type VARCHAR(10) NOT NULL,
+            currency VARCHAR(5) DEFAULT 'INR'
+        );
+    `);
+}
+ensureTable();
+
+// Add entry (expense or income)
+async function addEntry({ selection, type, description, amount, entryType }) {
+    const entry_date = new Date();
+    await pool.query(
+        `INSERT INTO entries (user_code, entry_date, type, description, amount, entry_type)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [selection, entry_date, type, description, Number(amount), entryType]
+    );
 }
 
-function adjustColumnWidths(worksheet) {
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-    const colWidths = jsonData[0].map((_, colIndex) => {
-        return {
-            wch: Math.max(
-                ...jsonData.map(row => (row[colIndex] ? row[colIndex].toString().length : 0))
-            )
-        };
-    });
-    worksheet['!cols'] = colWidths;
-}
+// Get summary for a user/month/year
+async function getSummaryData(month, year, user) {
+    // Get all entries for user/month/year
+    const res = await pool.query(
+        `SELECT * FROM entries
+         WHERE user_code = $1
+           AND EXTRACT(MONTH FROM entry_date) = $2
+           AND EXTRACT(YEAR FROM entry_date) = $3
+         ORDER BY entry_date ASC`,
+        [user, new Date(`${month} 1, ${year}`).getMonth() + 1, Number('20' + year)]
+    );
+    const data = res.rows;
 
-function appendToExcel(selection, type, description, amount, entryType) {
-    const date = new Date();
-    const sheetName = date.toLocaleString('default', { month: 'short' }) + '-' + date.getFullYear().toString().slice(-2) + selection;
-    const workbook = XLSX.readFile(excelPath);
-    let worksheet = workbook.Sheets[sheetName];
+    if (!data.length) return null;
 
-    if (!worksheet) {
-        worksheet = XLSX.utils.aoa_to_sheet([]);
-        workbook.SheetNames.push(sheetName);
-        workbook.Sheets[sheetName] = worksheet;
-    }
-
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-    const numericAmount = entryType === 'expense' ? -Math.abs(Number(amount)) : Math.abs(Number(amount));
-    const row = [date.toLocaleDateString(), type, description, numericAmount, entryType, 'INR'];
-
-    jsonData.push(row);
-    const newSheet = XLSX.utils.aoa_to_sheet(jsonData);
-    adjustColumnWidths(newSheet); // Adjust column widths
-    workbook.Sheets[sheetName] = newSheet;
-    XLSX.writeFile(workbook, excelPath);
-}
-
-function getSummaryData(sheetName, user) {
-    const workbook = XLSX.readFile(excelPath);
-    const worksheet = workbook.Sheets[sheetName + user];
-    if (!worksheet) return null;
-
-    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-    let totalExpense = 0;
-    let totalIncome = 0;
+    let totalExpense = 0, totalIncome = 0;
     const categoryTotals = {};
+    const tableData = [];
 
     data.forEach(row => {
-        let amount, entryType, category;
-
-        // if (user === 'A') {
-        amount = row[3];
-        entryType = row[4];
-        category = row[1];
-        // } else if (user === 'S') {
-        //   amount = row[9];
-        //  entryType = row[10];
-        // category = row[7];
-        // }
-
-        if (entryType === 'expense') {
+        const amount = Number(row.amount);
+        if (row.entry_type === 'expense') {
             totalExpense += amount;
-            categoryTotals[category] = (categoryTotals[category] || 0) + Math.abs(amount);
-        } else if (entryType === 'income') {
+            categoryTotals[row.type] = (categoryTotals[row.type] || 0) + Math.abs(amount);
+        } else if (row.entry_type === 'income') {
             totalIncome += amount;
         }
+        tableData.push([
+            row.entry_date.toISOString().slice(0, 10),
+            row.type,
+            row.description,
+            amount,
+            row.entry_type,
+            row.currency || 'INR'
+        ]);
     });
 
     const total = totalExpense + totalIncome;
@@ -88,7 +92,7 @@ function getSummaryData(sheetName, user) {
     const topCategory = Object.entries(categoryTotals).reduce((max, cur) => cur[1] > max[1] ? cur : max, ['', 0]);
 
     return {
-        data,
+        data: tableData,
         success: true,
         totalExpense,
         totalIncome,
@@ -102,38 +106,31 @@ app.get('/', (req, res) => {
     res.render('index');
 });
 
-app.get('/download', (req, res) => {
-    res.download(excelPath, 'data.xlsx', (err) => {
-        if (err) {
-            console.error('Error downloading the file:', err);
-            res.status(500).send('Error downloading the file');
-        }
-    });
-});
+// Download endpoint removed (no Excel file anymore)
 
-app.post('/submit', (req, res) => {
+app.post('/submit', async (req, res) => {
     const { selection, type, description, amount, entryType } = req.body;
-    appendToExcel(selection, type, description, amount, entryType);
+    await addEntry({ selection, type, description, amount, entryType });
     res.json({ success: true });
 });
 
-app.post('/add-expense', (req, res) => {
+app.post('/add-expense', async (req, res) => {
     const { selection, type, description, amount } = req.body;
-    appendToExcel(selection, type, description, amount, 'expense');
+    await addEntry({ selection, type, description, amount, entryType: 'expense' });
     res.json({ success: true, message: 'Expense added successfully' });
 });
 
-app.post('/add-income', (req, res) => {
+app.post('/add-income', async (req, res) => {
     const { selection, type, description, amount } = req.body;
-    appendToExcel(selection, type, description, amount, 'income');
+    await addEntry({ selection, type, description, amount, entryType: 'income' });
     res.json({ success: true, message: 'Income added successfully' });
 });
 
-app.get('/summary', (req, res) => {
+app.get('/summary', async (req, res) => {
     const { month, year, user } = req.query;
-    if (!month || !year) return res.status(400).send('Month and Year required');
-    const summary = getSummaryData(getMonthSheetName(month, year), user);
-    if (!summary) return res.status(404).send('No data found');
+    if (!month || !year || !user) return res.status(400).send('Month, Year, and User required');
+    const summary = await getSummaryData(month, year, user);
+    if (!summary) return res.json({ success: false, message: 'No data found' });
     res.json(summary);
 });
 
