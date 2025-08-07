@@ -49,3 +49,18 @@ function fetchSummary() {
         })
         .catch(() => alert("No data found or error occurred."));
 }
+
+function deleteEntry(entryId) {
+    if (!confirm('Are you sure you want to delete this entry?')) return;
+    fetch(`/entry/${entryId}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                alert('Entry deleted.');
+                fetchSummary();
+            } else {
+                alert('Failed to delete entry.');
+            }
+        })
+        .catch(() => alert('Error deleting entry.'));
+}

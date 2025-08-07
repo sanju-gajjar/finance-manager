@@ -67,6 +67,7 @@ async function getSummaryData(month, year, user) {
     let totalExpense = 0, totalIncome = 0;
     const categoryTotals = {};
     const tableData = [];
+    const ids = [];
 
     data.forEach(row => {
         const amount = Number(row.amount);
@@ -84,6 +85,7 @@ async function getSummaryData(month, year, user) {
             row.entry_type,
             row.currency || 'INR'
         ]);
+        ids.push(row.id);
     });
 
     const total = totalExpense + totalIncome;
@@ -93,6 +95,7 @@ async function getSummaryData(month, year, user) {
 
     return {
         data: tableData,
+        ids,
         success: true,
         totalExpense,
         totalIncome,
@@ -132,6 +135,16 @@ app.get('/summary', async (req, res) => {
     const summary = await getSummaryData(month, year, user);
     if (!summary) return res.json({ success: false, message: 'No data found' });
     res.json(summary);
+});
+
+app.delete('/entry/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM entries WHERE id = $1', [id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to delete entry.' });
+    }
 });
 
 app.listen(port, () => {

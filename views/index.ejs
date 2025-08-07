@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,38 +16,54 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-          
+
         }
+
         .container {
-            width: 90%; /* Adjust width for smaller screens */
-            max-width: 400px; /* Limit width for larger screens */
+            width: 90%;
+            /* Adjust width for smaller screens */
+            max-width: 400px;
+            /* Limit width for larger screens */
             background: rgba(255, 255, 255, 0.1);
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
-        h1, h2, h3 {
+
+        h1,
+        h2,
+        h3 {
             text-align: center;
-            font-size: 1.5rem; /* Adjust font size for mobile */
+            font-size: 1.5rem;
+            /* Adjust font size for mobile */
         }
+
         button {
             background: #ff7e5f;
             border: none;
             color: #fff;
-            width: 90px; /* Slightly wider button */
-            height: 70px; /* Keep height unchanged */
-            margin: 10px 5px; /* Adjust spacing */
+            width: 90px;
+            /* Slightly wider button */
+            height: 70px;
+            /* Keep height unchanged */
+            margin: 10px 5px;
+            /* Adjust spacing */
             border-radius: 10px;
             cursor: pointer;
             transition: background 0.3s ease;
-            display: inline-block; /* Ensure buttons align properly */
+            display: inline-block;
+            /* Ensure buttons align properly */
             text-align: center;
-            font-size: 0.9rem; /* Adjust font size */
+            font-size: 0.9rem;
+            /* Adjust font size */
         }
+
         button:hover {
             background: #feb47b;
         }
-        input, select {
+
+        input,
+        select {
             width: 100%;
             padding: 10px;
             margin: 10px 0;
@@ -54,27 +71,37 @@
             border-radius: 5px;
             background: rgba(255, 255, 255, 0.2);
             color: #fff;
-            font-size: 1rem; /* Adjust font size */
+            font-size: 1rem;
+            /* Adjust font size */
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
-            font-size: 0.9rem; /* Adjust font size */
-            table-layout: fixed; /* Ensure table columns fit within the container */
+            font-size: 0.9rem;
+            /* Adjust font size */
+            table-layout: fixed;
+            /* Ensure table columns fit within the container */
         }
-        th, td {
+
+        th,
+        td {
             padding: 10px;
             border: 1px solid #fff;
             text-align: left;
-            word-wrap: break-word; /* Allow text to wrap within cells */
+            word-wrap: break-word;
+            /* Allow text to wrap within cells */
         }
+
         th {
             background-color: rgba(255, 255, 255, 0.2);
-            position: sticky; /* Keep headers visible while scrolling */
+            position: sticky;
+            /* Keep headers visible while scrolling */
             top: 0;
             z-index: 1;
         }
+
         .modal {
             display: none;
             position: fixed;
@@ -86,34 +113,40 @@
             overflow: auto;
             background-color: rgba(0, 0, 0, 0.4);
         }
+
         .modal-content {
-            background: linear-gradient(to right, #ff7e5f, #feb47b); /* Same gradient as main page */
-            color: #fff; /* Adjust text color for contrast */
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            /* Same gradient as main page */
+            color: #fff;
+            /* Adjust text color for contrast */
             margin: 10% auto;
             padding: 20px;
             border: 1px solid #888;
-            width: 90%; /* Adjust width for mobile */
-            max-width: 400px; /* Limit width for larger screens */
+            width: 90%;
+            /* Adjust width for mobile */
+            max-width: 400px;
+            /* Limit width for larger screens */
             border-radius: 10px;
         }
+
         .close {
             color: #aaa;
             float: right;
             font-size: 28px;
             font-weight: bold;
         }
+
         .close:hover,
         .close:focus {
             color: black;
             text-decoration: none;
             cursor: pointer;
         }
-        #summaryResult {
-            
-          
-        }
+
+        #summaryResult {}
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>Welcome to the Expense Tracker</h1>
@@ -180,7 +213,8 @@
             </select>
             <button style="width: fit-content;" onclick="fetchSummary()">Get Summary</button>
         </div>
-        <div id="summaryResult" style="font-size: small; display:none; background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 10px;">
+        <div id="summaryResult"
+            style="font-size: small; display:none; background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 10px;">
             <h3 style="text-align: center;">Summary for <span id="summaryMonthYear"></span></h3>
             <table>
                 <tr>
@@ -238,6 +272,22 @@
             return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
         }
 
+        async function deleteEntry(entryId) {
+            if (!confirm('Are you sure you want to delete this entry?')) return;
+            try {
+                const res = await fetch(`/entry/${entryId}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Entry deleted.');
+                    fetchSummary();
+                } else {
+                    alert('Failed to delete entry.');
+                }
+            } catch (err) {
+                alert('Error deleting entry.');
+            }
+        }
+
         async function fetchSummary() {
             const month = document.getElementById('month').value;
             const year = document.getElementById('year').value;
@@ -261,6 +311,10 @@
 
                 document.getElementById('summaryMonthYear').textContent = `${month} ${year}`;
                 document.getElementById('summaryResult').style.display = 'block';
+
+                // Remove any previous summary tables
+                const summaryResult = document.getElementById('summaryResult');
+                Array.from(summaryResult.querySelectorAll('table.extra-summary-table')).forEach(t => t.remove());
 
                 const table1 = document.createElement('table');
                 table1.style.width = '100%';
@@ -294,26 +348,35 @@
                 table1.appendChild(subHeaderRow1); // Append the row to the table after the loop
 
                 // Populate rows with data for table1
-                summary.data.forEach(entry => {
+                summary.data.forEach((entry, idx) => {
                     const row = document.createElement('tr');
                     entry.slice(0, 6).forEach((field, index) => {
-                        if (field === '') {
-                            return;
-                        }
+                        if (field === '') return;
                         const td = document.createElement('td');
                         td.textContent = field || '-';
                         td.style.border = '1px solid #fff';
                         td.style.padding = '10px';
-                        td.style.textAlign = index === 3 ? 'right' : 'left'; // Align amounts to the right
+                        td.style.textAlign = index === 3 ? 'right' : 'left';
                         row.appendChild(td);
                     });
+                    // Add delete icon button
+                    const deleteTd = document.createElement('td');
+                    deleteTd.style.textAlign = 'center';
+                    deleteTd.style.border = '1px solid #fff';
+                    deleteTd.style.padding = '10px';
+                    deleteTd.innerHTML = `<button onclick="deleteEntry('${summary.ids[idx]}')" title="Delete" style="background:none;border:none;cursor:pointer;color:#fff;font-size:18px;">&#128465;</button>`;
+                    row.appendChild(deleteTd);
                     table1.appendChild(row);
                 });
 
+                // Add header for delete column
+                table1.querySelector('tr:nth-child(2)').appendChild(document.createElement('th')).textContent = '';
+
+                // Mark this table for easy removal on refresh
+                table1.classList.add('extra-summary-table');
+
                 // Append table to summary result
-                const summaryResult = document.getElementById('summaryResult');
-                summaryResult.appendChild(table1); // Append the new table without clearing existing content
-                
+                summaryResult.appendChild(table1);
             } catch (error) {
                 console.error('Error fetching summary:', error);
                 alert('Failed to fetch summary. Please try again.');
@@ -321,4 +384,5 @@
         }
     </script>
 </body>
+
 </html>
