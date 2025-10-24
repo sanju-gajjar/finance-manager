@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Family Expense Tracker</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/frame-ui.css">
+    <meta name="theme-color" content="#667eea">
+    <meta name="description" content="Family expense tracker for managing daily expenses and income">
+    
+    <!-- PWA Configuration -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Expense Tracker">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-128.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/icons/icon-128.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/icons/icon-72.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/icons/icon-72.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/icons/icon-72.png">
+    <link rel="apple-touch-icon" sizes="57x57" href="/icons/icon-72.png">
+    
+    <!-- Windows -->
+    <meta name="msapplication-TileImage" content="/icons/icon-144.png">
+    <meta name="msapplication-TileColor" content="#667eea">
+
+
+</head>
+
+<body>
+
+
+    <div class="container page-transition">
+        <h1>💰 Family Expense Tracker</h1>
+        
+        <label for="selectOption">Select User:</label>
+        <select id="selectOption">
+            <option value="A">👩 Ashi</option>
+            <option value="S">👨 Sanju</option>
+        </select>
+
+        <div class="action-buttons">
+            <button onclick="openModal('expense')">➖ Add Expense</button>
+            <button onclick="openModal('income')">➕ Add Income</button>
+            <button class="summary-button" onclick="showSummaryForm()">📊 View Summary</button>
+            <button onclick="toggleSearchFilter()">🔍 Search & Filter</button>
+            <button onclick="showRecurringSection()">🔄 Recurring</button>
+            <button onclick="showBudgetSection()">💰 Budget</button>
+            <button onclick="showChartsSection()">📊 Charts</button>
+            <button onclick="showReportsSection()">📋 Reports</button>
+        </div>
+
+        <!-- Search and Filter Section -->
+        <div id="searchFilterSection" style="display:none;">
+            <h3>🔍 Search & Filter</h3>
+            
+            <!-- Search Box -->
+            <input type="text" id="searchBox" placeholder="Search by description..." 
+                   onkeyup="performSearch()" style="margin-bottom: 16px;">
+            
+            <!-- Filter Options -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <select id="filterCategory" onchange="performSearch()">
+                    <option value="">All Categories</option>
+                    <option value="Food">Food</option>
+                    <option value="Clothes">Clothes</option>
+                    <option value="Fuel">Fuel</option>
+                    <option value="EMI">EMI</option>
+                    <option value="Recharge">Recharge</option>
+                    <option value="Saving">Saving</option>
+                    <option value="Home AHM">Home AHM</option>
+                    <option value="Home Torna">Home Torna</option>
+                    <option value="Salary">Salary</option>
+                    <option value="Other">Other</option>
+                </select>
+                
+                <select id="filterType" onchange="performSearch()">
+                    <option value="">All Types</option>
+                    <option value="expense">💸 Expenses</option>
+                    <option value="income">💰 Income</option>
+                </select>
+            </div>
+            
+            <!-- Date Range Filter -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <input type="date" id="dateFrom" onchange="performSearch()" placeholder="From Date">
+                <input type="date" id="dateTo" onchange="performSearch()" placeholder="To Date">
+            </div>
+            
+            <!-- Amount Range Filter -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <input type="number" id="amountMin" placeholder="Min Amount ₹" onkeyup="performSearch()">
+                <input type="number" id="amountMax" placeholder="Max Amount ₹" onkeyup="performSearch()">
+            </div>
+            
+            <!-- Clear Filters Button -->
+            <button onclick="clearFilters()" style="width: 100%; background: linear-gradient(135deg, #ffa726, #ff7043);">
+                🗑️ Clear All Filters
+            </button>
+        </div>
+
+        <!-- Search Results -->
+        <div id="searchResults" style="display:none;">
+            <h3 id="searchResultsTitle">Search Results</h3>
+            <div id="searchResultsContent"></div>
+        </div>
+
+        <!-- Recurring Transactions Section -->
+        <div id="recurringSection" style="display:none;">
+            <h3>🔄 Recurring Transactions</h3>
+            
+            <!-- Add New Recurring Transaction -->
+            <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 12px 0;">➕ Add New Recurring Transaction</h4>
+                
+                <select id="recurringType">
+                    <option value="expense">💸 Recurring Expense</option>
+                    <option value="income">💰 Recurring Income</option>
+                </select>
+                
+                <input type="text" id="recurringDescription" placeholder="Description (e.g., Monthly Salary)">
+                <input type="number" id="recurringAmount" placeholder="Amount">
+                
+                <select id="recurringCategory">
+                    <option disabled selected>Category</option>
+                    <option>Salary</option>
+                    <option>EMI</option>
+                    <option>Recharge</option>
+                    <option>Home AHM</option>
+                    <option>Home Torna</option>
+                    <option>Food</option>
+                    <option>Other</option>
+                </select>
+                
+                <select id="recurringFrequency">
+                    <option value="monthly">📅 Monthly</option>
+                    <option value="weekly">📅 Weekly</option>
+                    <option value="daily">📅 Daily</option>
+                </select>
+                
+                <input type="date" id="recurringStartDate">
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <button onclick="addRecurringTransaction()" style="background: linear-gradient(135deg, #51cf66, #40c057);">
+                        ➕ Add Recurring
+                    </button>
+                    <button onclick="processRecurringTransactions()" style="background: linear-gradient(135deg, #74c0fc, #339af0);">
+                        ⚡ Process Due
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Active Recurring Transactions -->
+            <div id="recurringList">
+                <h4>📋 Active Recurring Transactions</h4>
+                <div id="recurringListContent"></div>
+            </div>
+        </div>
+
+        <!-- Budget Management Section -->
+        <div id="budgetSection" style="display:none;">
+            <h3>💰 Budget Management</h3>
+            
+            <!-- Current Month Budget Overview -->
+            <div id="budgetOverview" style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 12px 0;">📊 Current Month Budget Status</h4>
+                <div id="budgetStatusContent">Loading budget status...</div>
+            </div>
+            
+            <!-- Set Budget Limits -->
+            <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 12px 0;">🎯 Set Budget Limits</h4>
+                
+                <select id="budgetUser">
+                    <option value="A">👩 Ashi's Budget</option>
+                    <option value="S">👨 Sanju's Budget</option>
+                    <option value="combined">👨‍👩‍👧‍👦 Family Budget</option>
+                </select>
+                
+                <select id="budgetCategory">
+                    <option disabled selected>Select Category</option>
+                    <option value="Food">Food</option>
+                    <option value="Clothes">Clothes</option>
+                    <option value="Fuel">Fuel</option>
+                    <option value="EMI">EMI</option>
+                    <option value="Recharge">Recharge</option>
+                    <option value="Home AHM">Home AHM</option>
+                    <option value="Home Torna">Home Torna</option>
+                    <option value="Other">Other</option>
+                    <option value="total">🎯 Total Monthly Budget</option>
+                </select>
+                
+                <input type="number" id="budgetAmount" placeholder="Budget Amount ₹">
+                
+                <select id="budgetPeriod">
+                    <option value="monthly">📅 Monthly</option>
+                    <option value="weekly">📅 Weekly</option>
+                    <option value="daily">📅 Daily</option>
+                </select>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <button onclick="setBudget()" style="background: linear-gradient(135deg, #51cf66, #40c057);">
+                        💰 Set Budget
+                    </button>
+                    <button onclick="loadBudgetAnalysis()" style="background: linear-gradient(135deg, #74c0fc, #339af0);">
+                        📊 Analyze Spending
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Budget Alerts Settings -->
+            <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 12px 0;">🚨 Alert Settings</h4>
+                
+                <label style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <input type="checkbox" id="alertEnable" style="margin-right: 8px; width: auto;">
+                    Enable budget alerts
+                </label>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label>⚠️ Warning at:</label>
+                        <select id="warningThreshold">
+                            <option value="50">50% of budget</option>
+                            <option value="70">70% of budget</option>
+                            <option value="80" selected>80% of budget</option>
+                            <option value="90">90% of budget</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>🚨 Critical at:</label>
+                        <select id="criticalThreshold">
+                            <option value="90">90% of budget</option>
+                            <option value="95">95% of budget</option>
+                            <option value="100" selected>100% of budget</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button onclick="saveAlertSettings()" style="width: 100%; margin-top: 12px; background: linear-gradient(135deg, #ffa726, #ff7043);">
+                    💾 Save Alert Settings
+                </button>
+            </div>
+            
+            <!-- Active Budgets List -->
+            <div id="budgetList">
+                <h4>📋 Active Budgets</h4>
+                <div id="budgetListContent"></div>
+            </div>
+        </div>
+
+        <!-- Charts and Visualizations Section -->
+        <div id="chartsSection" style="display:none;">
+            <h3>📊 Financial Analytics</h3>
+            
+            <!-- Chart Controls -->
+            <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 12px 0;">📈 Chart Options</h4>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <select id="chartUser">
+                        <option value="A">👩 Ashi's Data</option>
+                        <option value="S">👨 Sanju's Data</option>
+                        <option value="combined">👨‍👩‍👧‍👦 Combined Data</option>
+                    </select>
+                    
+                    <select id="chartPeriod">
+                        <option value="currentMonth">This Month</option>
+                        <option value="lastMonth">Last Month</option>
+                        <option value="last3Months">Last 3 Months</option>
+                        <option value="last6Months">Last 6 Months</option>
+                        <option value="currentYear">This Year</option>
+                    </select>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <button onclick="generateCharts()" style="background: linear-gradient(135deg, #51cf66, #40c057);">
+                        📊 Generate Charts
+                    </button>
+                    <button onclick="exportCharts()" style="background: linear-gradient(135deg, #74c0fc, #339af0);">
+                        💾 Export Charts
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Chart Containers -->
+            <div id="chartsContainer" style="display: none;">
+                
+                <!-- Expense by Category Pie Chart -->
+                <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                    <h4 style="margin: 0 0 12px 0;">🥧 Expenses by Category</h4>
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Monthly Trends Line Chart -->
+                <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                    <h4 style="margin: 0 0 12px 0;">📈 Monthly Trends</h4>
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="trendsChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Income vs Expense Bar Chart -->
+                <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                    <h4 style="margin: 0 0 12px 0;">💰 Income vs Expenses</h4>
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="incomeExpenseChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Daily Spending Pattern -->
+                <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                    <h4 style="margin: 0 0 12px 0;">📅 Daily Spending Pattern</h4>
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="dailyChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Budget Progress Charts -->
+                <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                    <h4 style="margin: 0 0 12px 0;">🎯 Budget Progress</h4>
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        <!-- Advanced Reports Section -->
+        <div id="reportsSection" style="display:none;">
+            <h3>📋 Financial Reports</h3>
+            
+            <!-- Report Generator -->
+            <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 12px 0;">📊 Generate Report</h4>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <select id="reportUser">
+                        <option value="A">👩 Ashi's Report</option>
+                        <option value="S">👨 Sanju's Report</option>
+                        <option value="combined">👨‍👩‍👧‍👦 Family Report</option>
+                    </select>
+                    
+                    <select id="reportType">
+                        <option value="monthly">📅 Monthly Report</option>
+                        <option value="quarterly">📅 Quarterly Report</option>
+                        <option value="yearly">📅 Yearly Report</option>
+                        <option value="custom">📅 Custom Period</option>
+                    </select>
+                </div>
+                
+                <!-- Custom Date Range (hidden by default) -->
+                <div id="customDateRange" style="display: none; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <input type="date" id="reportStartDate" placeholder="Start Date">
+                    <input type="date" id="reportEndDate" placeholder="End Date">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <button onclick="generateReport()" style="background: linear-gradient(135deg, #51cf66, #40c057);">
+                        📊 Generate Report
+                    </button>
+                    <button onclick="exportAllData()" style="background: linear-gradient(135deg, #74c0fc, #339af0);">
+                        💾 Export All Data
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Quick Stats Cards -->
+            <div id="quickStats" style="display: none; margin-bottom: 16px;">
+                <h4>📈 Quick Statistics</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 18px; font-weight: bold; color: #ff6b6b;" id="totalExpenseCard">₹0</div>
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.8);">Total Expenses</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 18px; font-weight: bold; color: #51cf66;" id="totalIncomeCard">₹0</div>
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.8);">Total Income</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 18px; font-weight: bold;" id="netBalanceCard">₹0</div>
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.8);">Net Balance</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 18px; font-weight: bold; color: #ffa726;" id="avgDailyCard">₹0</div>
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.8);">Avg Daily Expense</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Detailed Report -->
+            <div id="detailedReport" style="display: none;">
+                <h4>📋 Detailed Analysis</h4>
+                <div id="reportContent"></div>
+            </div>
+            
+            <!-- Export Options -->
+            <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 12px 0;">💾 Export Options</h4>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <button onclick="exportToPDF()" style="background: linear-gradient(135deg, #ff6b6b, #ee5a24);">
+                        📄 Export to PDF
+                    </button>
+                    <button onclick="exportToCSV()" style="background: linear-gradient(135deg, #51cf66, #40c057);">
+                        📊 Export to CSV
+                    </button>
+                    <button onclick="exportToJSON()" style="background: linear-gradient(135deg, #74c0fc, #339af0);">
+                        🔧 Export to JSON
+                    </button>
+                    <button onclick="sharableReport()" style="background: linear-gradient(135deg, #ffa726, #ff7043);">
+                        📤 Create Sharable Link
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h3 id="modalTitle">Add Entry</h3>
+                <input type="number" id="amount" placeholder="Amount">
+                <select id="type">
+                    <option disabled selected>Type</option>
+                    <option>Clothes</option>
+                    <option>Food</option>
+                    <option>Other</option>
+                    <option>Saving</option>
+                    <option>Home AHM</option>
+                    <option>Home Torna</option>
+                    <option>Fuel</option>
+                    <option>Recharge</option>
+                    <option>EMI</option>
+                    <option class="income-only" style="display:none;">Salary</option>
+                    <option class="income-only" style="display:none;">Other</option>
+                </select>
+                <input type="text" id="description" placeholder="Description">
+                <button onclick="submitEntry()">Submit</button>
+            </div>
+        </div>
+
+        <div id="summaryForm" style="display:none;">
+            <h3>Get Summary</h3>
+            <select id="month">
+                <option disabled selected>Month</option>
+                <option value="January">January</option>
+                <option value="February">February</option>
+                <option value="March">March</option>
+                <option value="April">April</option>
+                <option value="May">May</option>
+                <option value="June">June</option>
+                <option value="July">July</option>
+                <option value="August">August</option>
+                <option value="September">September</option>
+                <option value="October">October</option>
+                <option value="November">November</option>
+                <option value="December">December</option>
+            </select>
+            <select id="year">
+                <option disabled selected>Year</option>
+                <option value="23">2023</option>
+                <option value="24">2024</option>
+                <option value="25">2025</option>
+                <option value="26">2026</option>
+                <option value="27">2027</option>
+                <option value="28">2028</option>
+                <option value="29">2029</option>
+                <option value="30">2030</option>
+            </select>
+            <button style="width: fit-content;" onclick="fetchSummary()">Get Summary</button>
+        </div>
+        <div id="summaryResult" style="display:none;">
+            <h3>📈 Summary for <span id="summaryMonthYear"></span></h3>
+            <div class="table-container">
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>💸 Total Expense</td>
+                        <td>₹<span id="totalExpense"></span></td>
+                    </tr>
+                    <tr>
+                        <td>💰 Total Income</td>
+                        <td>₹<span id="totalIncome"></span></td>
+                    </tr>
+                    <tr>
+                        <td>📊 Expense %</td>
+                        <td><span id="expensePercentage"></span>%</td>
+                    </tr>
+                    <tr>
+                        <td>📈 Income %</td>
+                        <td><span id="incomePercentage"></span>%</td>
+                    </tr>
+                    <tr>
+                        <td>🏆 Top Category</td>
+                        <td><span id="topCategory"></span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PWA Install Button will be added here by PWA manager -->
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/frame-ui.js"></script>
+    <script src="/pwa-minimal.js"></script>
+    <script src="/offline-storage.js"></script>
+    <script src="/script.js"></script>
+    <script>
+        function openModal(type) {
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modalTitle');
+            const typeOptions = document.querySelectorAll('#type option');
+
+            modal.style.display = 'block';
+            modalTitle.textContent = type === 'income' ? '➕ Add Income' : '➖ Add Expense';
+
+            // Clear previous values
+            document.getElementById('amount').value = '';
+            document.getElementById('type').selectedIndex = 0;
+            document.getElementById('description').value = '';
+
+            typeOptions.forEach(option => {
+                if (type === 'income') {
+                    option.style.display = option.classList.contains('income-only') ? 'block' : 'none';
+                } else {
+                    option.style.display = option.classList.contains('income-only') ? 'none' : 'block';
+                }
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function formatINR(amount) {
+            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
+        }
+
+        async function deleteEntry(entryId) {
+            if (!confirm('Are you sure you want to delete this entry?')) return;
+            try {
+                const res = await fetch(`/entry/${entryId}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Entry deleted.');
+                    fetchSummary();
+                } else {
+                    alert('Failed to delete entry.');
+                }
+            } catch (err) {
+                alert('Error deleting entry.');
+            }
+        }
+
+        async function fetchSummary() {
+            const month = document.getElementById('month').value;
+            const year = document.getElementById('year').value;
+            const user = document.getElementById('selectOption').value;
+
+            try {
+                const response = await fetch(`/summary?month=${month}&year=${year}&user=${user}`);
+                const summary = await response.json();
+
+                if (!summary.success) {
+                    alert(summary.message || 'No data found for the selected period.');
+                    return;
+                }
+                //console.log(summary.data); // Added logging for summary
+
+                document.getElementById('totalExpense').textContent = formatINR(summary.totalExpense);
+                document.getElementById('totalIncome').textContent = formatINR(summary.totalIncome);
+                document.getElementById('expensePercentage').textContent = summary.expensePercentage.toFixed(2);
+                document.getElementById('incomePercentage').textContent = summary.incomePercentage.toFixed(2);
+                document.getElementById('topCategory').textContent = summary.topCategory;
+
+                document.getElementById('summaryMonthYear').textContent = `${month} ${year}`;
+                document.getElementById('summaryResult').style.display = 'block';
+
+                // Remove any previous summary tables
+                const summaryResult = document.getElementById('summaryResult');
+                Array.from(summaryResult.querySelectorAll('table.extra-summary-table')).forEach(t => t.remove());
+
+                // Create table container for horizontal scrolling
+                const tableContainer = document.createElement('div');
+                tableContainer.className = 'table-container';
+                
+                const table1 = document.createElement('table');
+                table1.style.width = '100%';
+                table1.style.minWidth = '600px'; // Ensure table has minimum width for all columns
+
+                // Create header row for table1
+                const headerRow1 = document.createElement('tr');
+                [user === 'A' ? "Ashi" : "Sanju", '', '', '', '', ''].forEach((header, index) => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    th.style.textAlign = 'center';
+                    headerRow1.appendChild(th);
+                });
+                table1.appendChild(headerRow1);
+
+                // Create sub-header row for table1
+                const subHeaderRow1 = document.createElement('tr');
+                ['Date', 'Type', 'Desc', 'Amount', 'Type', 'Money'].forEach(subHeader => {
+                    const th = document.createElement('th');
+                    th.textContent = subHeader;
+                    th.style.border = '1px solid #fff';
+                    th.style.padding = '10px';
+                    th.style.textAlign = 'left';
+                    th.style.position = 'sticky'; // Keep sub-headers visible while scrolling
+                    th.style.top = '30px'; // Adjust based on header height
+                    th.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                    subHeaderRow1.appendChild(th); // Append to the row, not the table
+                });
+                table1.appendChild(subHeaderRow1); // Append the row to the table after the loop
+
+                // Populate rows with data for table1
+                summary.data.forEach((entry, idx) => {
+                    const row = document.createElement('tr');
+                    entry.slice(0, 6).forEach((field, index) => {
+                        if (field === '') return;
+                        const td = document.createElement('td');
+                        td.textContent = field || '-';
+                        td.style.border = '1px solid #fff';
+                        td.style.padding = '10px';
+                        td.style.textAlign = index === 3 ? 'right' : 'left';
+                        row.appendChild(td);
+                    });
+                    // Add delete icon button
+                    const deleteTd = document.createElement('td');
+                    deleteTd.style.textAlign = 'center';
+                    deleteTd.style.border = '1px solid #fff';
+                    deleteTd.style.padding = '10px';
+                    deleteTd.innerHTML = `<button onclick="deleteEntry('${summary.ids[idx]}')" title="Delete" style="background:none;border:none;cursor:pointer;color:#fff;font-size:18px;">&#128465;</button>`;
+                    row.appendChild(deleteTd);
+                    table1.appendChild(row);
+                });
+
+                // Add header for delete column
+                table1.querySelector('tr:nth-child(2)').appendChild(document.createElement('th')).textContent = '';
+
+                // Mark this table for easy removal on refresh
+                table1.classList.add('extra-summary-table');
+
+                // Append table to container and container to summary result
+                tableContainer.appendChild(table1);
+                summaryResult.appendChild(tableContainer);
+            } catch (error) {
+                console.error('Error fetching summary:', error);
+                alert('Failed to fetch summary. Please try again.');
+            }
+        }
+    </script>
+</body>
+
+</html>

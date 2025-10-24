@@ -1,0 +1,361 @@
+/* 🎨 Modern UI Enhancement Styles */
+/* This file enhances the existing design with modern animations and effects */
+
+/* 🌈 Modern Body Background with Animated Gradient */
+body {
+    background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #f5576c, #4facfe, #00f2fe);
+    background-size: 400% 400%;
+    animation: gradient-shift 15s ease infinite;
+    position: relative;
+    overflow-x: hidden;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.3) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+@keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* ✨ Enhanced Container with Glass Morphism */
+.container {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    border-radius: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 1s ease;
+}
+
+.container:hover::before {
+    left: 100%;
+}
+
+.container:hover {
+    transform: translateY(-5px);
+    box-shadow: 
+        0 30px 80px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* 🎯 Modern Typography with Text Effects */
+h1 {
+    background: linear-gradient(135deg, #fff, #f0f9ff, #e0f2fe);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    position: relative;
+}
+
+h1::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #fff, transparent);
+    border-radius: 2px;
+}
+
+/* 🎪 Floating Elements Animation */
+.floating-elements {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.floating-element {
+    position: absolute;
+    font-size: 2rem;
+    opacity: 0.1;
+    animation: float 20s infinite linear;
+}
+
+.floating-element:nth-child(1) { left: 10%; animation-delay: 0s; }
+.floating-element:nth-child(2) { left: 20%; animation-delay: -2s; }
+.floating-element:nth-child(3) { left: 30%; animation-delay: -4s; }
+.floating-element:nth-child(4) { left: 40%; animation-delay: -6s; }
+.floating-element:nth-child(5) { left: 50%; animation-delay: -8s; }
+.floating-element:nth-child(6) { left: 60%; animation-delay: -10s; }
+.floating-element:nth-child(7) { left: 70%; animation-delay: -12s; }
+.floating-element:nth-child(8) { left: 80%; animation-delay: -14s; }
+.floating-element:nth-child(9) { left: 90%; animation-delay: -16s; }
+
+@keyframes float {
+    0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.1;
+    }
+    90% {
+        opacity: 0.1;
+    }
+    100% {
+        transform: translateY(-100px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* 🌟 Enhanced Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 30px 0;
+    position: relative;
+}
+
+.action-buttons::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    border-radius: 50%;
+    transition: all 0.5s ease;
+    pointer-events: none;
+}
+
+.action-buttons:hover::before {
+    width: 200px;
+    height: 200px;
+}
+
+/* 📊 Modern Summary Cards */
+.summary-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 20px;
+    margin: 16px 0;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.summary-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.8s ease;
+}
+
+.summary-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.summary-card:hover::before {
+    left: 100%;
+}
+
+/* 💫 Loading Animations */
+.loading-shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* 🎊 Success States */
+.success-state {
+    animation: success-bounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes success-bounce {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* 🌙 Dark Mode Enhancements */
+@media (prefers-color-scheme: dark) {
+    .container {
+        background: rgba(15, 23, 42, 0.8);
+        box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    
+    .glass-card {
+        background: rgba(30, 41, 59, 0.5);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+}
+
+/* 📱 Mobile Optimizations */
+@media (max-width: 480px) {
+    .floating-elements {
+        display: none; /* Reduce animations on mobile for performance */
+    }
+    
+    body {
+        animation-duration: 30s; /* Slower animations on mobile */
+    }
+    
+    .container {
+        border-radius: 20px;
+        margin: 5px;
+        padding: 16px;
+    }
+    
+    .action-buttons {
+        gap: 12px;
+    }
+}
+
+/* 🎨 Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* 🎭 Focus Styles for Accessibility */
+*:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* 🎪 Page Transitions */
+.page-transition {
+    animation: page-enter 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes page-enter {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ✨ Special Effects */
+.sparkle {
+    position: relative;
+}
+
+.sparkle::after {
+    content: '✨';
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    font-size: 0.8rem;
+    animation: sparkle-twinkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle-twinkle {
+    0%, 100% { opacity: 0; transform: scale(0.5) rotate(0deg); }
+    50% { opacity: 1; transform: scale(1) rotate(180deg); }
+}
+
+/* 🎯 Interactive Elements */
+.interactive {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.interactive:hover {
+    transform: scale(1.05);
+}
+
+.interactive:active {
+    transform: scale(0.95);
+}
+
+/* 🌈 Color Palette Classes */
+.gradient-text {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.success-gradient {
+    background: linear-gradient(135deg, #4ecdc4, #44a08d);
+}
+
+.warning-gradient {
+    background: linear-gradient(135deg, #ffa726, #fb8c00);
+}
+
+.danger-gradient {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+}
+
+.info-gradient {
+    background: linear-gradient(135deg, #45b7d1, #2196f3);
+}

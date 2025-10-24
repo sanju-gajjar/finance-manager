@@ -319,8 +319,8 @@ function displaySearchResults(entries, filters) {
         <div style="margin-bottom: 20px; padding: 16px; background: rgba(255,255,255,0.1); border-radius: 12px;">
             <h4 style="margin: 0 0 12px 0;">📊 Filter Summary</h4>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px;">
-                <div>💸 Total Expenses: <strong>${formatCurrency(totalExpense)}</strong></div>
-                <div>💰 Total Income: <strong>${formatCurrency(totalIncome)}</strong></div>
+                <div>💸 Total Expenses: <strong>{matCurrency(totalExpense)}</strong></div>
+                <div>💰 Total Income: <strong>{matCurrency(totalIncome)}</strong></div>
             </div>
         </div>
     `;
@@ -356,7 +356,7 @@ function displaySearchResults(entries, filters) {
                 <td>${entry.type}</td>
                 <td>${entry.description}</td>
                 <td style="text-align: right; font-weight: bold; color: ${amountColor};">
-                    ${formatCurrency(Math.abs(parseFloat(entry.amount)))}
+                    {matCurrency(Math.abs(parseFloat(entry.amount)))}
                 </td>
                 <td>${typeIcon} ${entry.entryType}</td>
                 <td style="text-align: center;">
@@ -510,7 +510,7 @@ async function loadRecurringTransactions() {
                 <tr style="${isDue ? 'background: rgba(255, 107, 107, 0.1);' : ''}">
                     <td>${typeIcon} ${r.description}</td>
                     <td style="text-align: right; font-weight: bold; color: ${amountColor};">
-                        ${formatCurrency(r.amount)}
+                        {matCurrency(r.amount)}
                     </td>
                     <td>${r.category}</td>
                     <td>${r.frequency}${dueBadge}</td>
@@ -676,11 +676,11 @@ async function loadBudgetOverview() {
                         <div style="background: ${statusColor}; height: 100%; width: ${Math.min(percentage, 100)}%; transition: width 0.3s ease;"></div>
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 12px;">
-                        <span>Spent: ${formatCurrency(spent)}</span>
-                        <span>Budget: ${formatCurrency(budget.amount)}</span>
+                        <span>Spent: {matCurrency(spent)}</span>
+                        <span>Budget: {matCurrency(budget.amount)}</span>
                     </div>
                     <div style="text-align: center; font-size: 11px; color: ${remaining >= 0 ? '#51cf66' : '#ff6b6b'};">
-                        ${remaining >= 0 ? `${formatCurrency(remaining)} remaining` : `${formatCurrency(Math.abs(remaining))} over budget`}
+                        ${remaining >= 0 ? `{matCurrency(remaining)} remaining` : `{matCurrency(Math.abs(remaining))} over budget`}
                     </div>
                 </div>
             `;
@@ -726,7 +726,7 @@ async function loadBudgets() {
                 <tr>
                     <td>${userIcon}</td>
                     <td>${budget.category === 'total' ? '🎯 Total Budget' : budget.category}</td>
-                    <td style="text-align: right; font-weight: bold;">${formatCurrency(budget.amount)}</td>
+                    <td style="text-align: right; font-weight: bold;">{matCurrency(budget.amount)}</td>
                     <td>${budget.period}</td>
                     <td style="text-align: center;">
                         <button onclick="deleteBudget('${budget.id}')" 
@@ -938,7 +938,7 @@ function createCategoryChart(data) {
                     callbacks: {
                         label: function(context) {
                             const percentage = ((context.parsed / amounts.reduce((a, b) => a + b, 0)) * 100).toFixed(1);
-                            return `${context.label}: ${formatCurrency(context.parsed)} (${percentage}%)`;
+                            return `${context.label}: {matCurrency(context.parsed)} (${percentage}%)`;
                         }
                     }
                 }
@@ -1025,7 +1025,7 @@ function createTrendsChart(data, period) {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+                            return `${context.dataset.label}: {matCurrency(context.parsed.y)}`;
                         }
                     }
                 }
@@ -1131,7 +1131,7 @@ function createDailyChart(data) {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return `${context.label}: ${formatCurrency(context.parsed.y)}`;
+                            return `${context.label}: {matCurrency(context.parsed.y)}`;
                         }
                     }
                 }
@@ -1207,7 +1207,7 @@ async function createBudgetChart(user) {
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+                                return `${context.dataset.label}: {matCurrency(context.parsed.y)}`;
                             }
                         }
                     }
@@ -1447,7 +1447,7 @@ function generateDetailedReport(data, user, startDate, endDate, reportType) {
             html += `
                 <tr>
                     <td>${category}</td>
-                    <td style="text-align: right; font-weight: bold;">${formatCurrency(amount)}</td>
+                    <td style="text-align: right; font-weight: bold;">{matCurrency(amount)}</td>
                     <td style="text-align: right;">${percentage}%</td>
                     <td style="text-align: right;">${transactionCount}</td>
                 </tr>
@@ -1502,9 +1502,9 @@ function generateDetailedReport(data, user, startDate, endDate, reportType) {
                 html += `
                     <tr>
                         <td>${monthName}</td>
-                        <td style="text-align: right; color: #51cf66;">${formatCurrency(data.income)}</td>
-                        <td style="text-align: right; color: #ff6b6b;">${formatCurrency(data.expense)}</td>
-                        <td style="text-align: right; color: ${net >= 0 ? '#51cf66' : '#ff6b6b'}; font-weight: bold;">${formatCurrency(net)}</td>
+                        <td style="text-align: right; color: #51cf66;">{matCurrency(data.income)}</td>
+                        <td style="text-align: right; color: #ff6b6b;">{matCurrency(data.expense)}</td>
+                        <td style="text-align: right; color: ${net >= 0 ? '#51cf66' : '#ff6b6b'}; font-weight: bold;">{matCurrency(net)}</td>
                     </tr>
                 `;
             });
@@ -1550,7 +1550,7 @@ function generateDetailedReport(data, user, startDate, endDate, reportType) {
                 <td>${date}</td>
                 <td>${transaction.description}</td>
                 <td>${transaction.type}</td>
-                <td style="text-align: right; font-weight: bold; color: ${amountColor};">${formatCurrency(amount)}</td>
+                <td style="text-align: right; font-weight: bold; color: ${amountColor};">{matCurrency(amount)}</td>
                 <td>${typeIcon} ${transaction.entryType}</td>
             </tr>
         `;
