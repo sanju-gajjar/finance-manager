@@ -193,87 +193,97 @@ async function getSummaryData(month, year, user) {
         if (!sheets || !SPREADSHEET_ID) {
             return { success: false, message: 'Google Sheets not available' };
         }
-        
-        // Get all data from Expenses sheet
+
+        // Fetch all data
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Expenses!A2:H', // Skip header row
+            range: 'Expenses!A2:H', // Skip header
         });
-        
+
         const rows = response.data.values || [];
         if (!rows.length) {
             return { success: false, message: 'No data found' };
         }
-        
-        // Filter data for specific user/month/year
-        const targetMonth = new Date(`${month} 1, ${year}`).getMonth() + 1;
-        const targetYear = Number('20' + year);
-        
+
+        // Handle year safely (works with "25" or "2025")
+        const targetYear = year.length === 2 ? Number('20' + year) : Number(year);
+
+        // Handle month (accepts "October" or "10")
+        let targetMonth;
+        if (isNaN(month)) {
+            targetMonth = new Date(`${month} 1, ${targetYear}`).getMonth() + 1;
+        } else {
+            targetMonth = Number(month);
+        }
+
         const filteredData = rows.filter(row => {
-            if (!row[1] || !row[2]) return false; // Skip incomplete rows
-            
+            if (!row[1] || !row[2]) return false;
             const entryDate = new Date(row[1]);
             const entryMonth = entryDate.getMonth() + 1;
             const entryYear = entryDate.getFullYear();
-            const entryUser = row[2];
-            
-            return entryUser === user && entryMonth === targetMonth && entryYear === targetYear;
+            const entryUser = (row[2] || '').trim().toLowerCase();
+            return (
+                entryUser === user.trim().toLowerCase() &&
+                entryMonth === targetMonth &&
+                entryYear === targetYear
+            );
         });
-        
+
+        console.log(`Fetched ${rows.length} rows → Filtered ${filteredData.length} for ${user}, ${month} ${year}`);
+
         if (!filteredData.length) {
-            return { success: false, message: 'No data found for the selected period' };
+            return { success: false, message: 'No data found for selected period' };
         }
-        
+
+        // Compute summary
         let totalExpense = 0, totalIncome = 0;
         const categoryTotals = {};
         const tableData = [];
         const ids = [];
-        
+
         filteredData.forEach((row, index) => {
             const amount = Number(row[5]) || 0;
             const entryType = row[6];
             const type = row[3];
-            
+
             if (entryType === 'expense') {
                 totalExpense += Math.abs(amount);
                 categoryTotals[type] = (categoryTotals[type] || 0) + Math.abs(amount);
             } else if (entryType === 'income') {
                 totalIncome += Math.abs(amount);
             }
-            
+
             tableData.push([
-                row[1], // date
-                row[3], // type
-                row[4], // description
-                Math.abs(amount), // amount
-                row[6], // entry_type
-                row[7] || 'INR' // currency
+                row[1], row[3], row[4], Math.abs(amount), entryType, row[7] || 'INR'
             ]);
-            
-            ids.push(index + 2); // Sheet row number (accounting for header)
+
+            ids.push(index + 2); // Account for header
         });
-        
+
         const total = totalExpense + totalIncome;
         const expensePercentage = total ? (totalExpense / total) * 100 : 0;
         const incomePercentage = total ? (totalIncome / total) * 100 : 0;
-        const topCategory = Object.entries(categoryTotals).reduce((max, cur) => cur[1] > max[1] ? cur : max, ['', 0]);
-        
+        const topCategory = Object.entries(categoryTotals).reduce(
+            (max, cur) => (cur[1] > max[1] ? cur : max),
+            ['', 0]
+        );
+
         return {
+            success: true,
             data: tableData,
             ids,
-            success: true,
             totalExpense,
             totalIncome,
             expensePercentage,
             incomePercentage,
             topCategory: topCategory[0] || 'None'
         };
-        
     } catch (error) {
         console.error('Error getting summary data:', error);
         return { success: false, message: 'Error fetching data from Google Sheets' };
     }
 }
+
 
 app.get('/', (req, res) => {
     res.render('index');
