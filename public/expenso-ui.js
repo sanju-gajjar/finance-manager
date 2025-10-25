@@ -8,11 +8,11 @@ class ExpensoUI {
         this.init();
     }
 
-    init() {
-        this.loadTransactions();
+    async init() {
+        await this.loadTransactions();
+        this.updateBalance();
         this.render();
         this.bindEvents();
-        this.updateBalance();
     }
 
     render() {
@@ -694,7 +694,8 @@ class ExpensoUI {
             selection: formData.get('user'), // User selection
             type: formData.get('category'), // Category
             description: formData.get('description'),
-            amount: parseFloat(formData.get('amount'))
+            amount: parseFloat(formData.get('amount')),
+            date: formData.get('date') // Include the selected date
         };
 
         const transactionType = formData.get('type'); // 'income' or 'expense'
@@ -718,7 +719,7 @@ class ExpensoUI {
                     amount: transactionData.amount,
                     description: transactionData.description,
                     category: transactionData.type, // Category is in 'type' field for server
-                    date: new Date().toISOString().split('T')[0], // Use today's date
+                    date: transactionData.date, // Use the selected date from the form
                     user: transactionData.selection // Store user info
                 };
                 
@@ -830,35 +831,62 @@ class ExpensoUI {
     // Data management
     async loadTransactions() {
         try {
-            // Since there's no get-transactions endpoint, we'll start with empty transactions
-            // and load them from the summary endpoint for a specific month/year
             const currentDate = new Date();
             const month = currentDate.getMonth() + 1;
             const year = currentDate.getFullYear();
-            const user = 'Ashi'; // Default user, can be made configurable later
             
-            const response = await fetch(`/summary?month=${month}&year=${year}&user=${user}`);
-            if (response.ok) {
-                const summaryData = await response.json();
-                if (summaryData.success !== false && summaryData.data) {
-                    // Convert summary data to transaction format
-                    this.transactions = summaryData.data.map((row, index) => ({
-                        id: (index + 1).toString(),
-                        type: row[4] === 'Income' ? 'income' : 'expense', // Assuming column 4 is entry type
-                        amount: parseFloat(row[3]) || 0, // Assuming column 3 is amount
-                        description: row[2] || 'No description', // Assuming column 2 is description
-                        category: row[1] || 'Other', // Assuming column 1 is category
-                        date: row[0] || new Date().toISOString().split('T')[0] // Assuming column 0 is date
-                    }));
-                } else {
-                    this.transactions = [];
+            console.log(`Loading transactions for month: ${month}, year: ${year}`);
+            
+            // Load transactions for both users
+            const users = ['Ashi', 'Sanju'];
+            let allTransactions = [];
+            
+            for (const user of users) {
+                try {
+                    const response = await fetch(`/summary?month=${month}&year=${year}&user=${user}`);
+                    if (response.ok) {
+                        const summaryData = await response.json();
+                        if (summaryData.success !== false && summaryData.data) {
+                            // Convert summary data to transaction format
+                            const userTransactions = summaryData.data.map((row, index) => ({
+                                id: `${user}-${index + 1}`,
+                                type: row[4] === 'income' ? 'income' : 'expense', // Entry type is in column 4
+                                amount: Math.abs(parseFloat(row[3]) || 0), // Amount is in column 3
+                                description: row[2] || 'No description', // Description is in column 2
+                                category: row[1] || 'Other', // Category is in column 1
+                                date: row[0] || new Date().toISOString().split('T')[0], // Date is in column 0
+                                user: user
+                            }));
+                            console.log(`Loaded ${userTransactions.length} transactions for ${user}:`, userTransactions);
+                            allTransactions = allTransactions.concat(userTransactions);
+                        }
+                    }
+                } catch (userError) {
+                    console.log(`Error loading data for ${user}:`, userError);
                 }
-            } else {
-                this.transactions = [];
             }
+            
+            // Sort by date (newest first)
+            this.transactions = allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+            console.log('Loaded transactions:', this.transactions.length);
+            
+            // Update balance after loading transactions
+            this.updateBalance();
+            
+            // Re-render to show updated balance and transactions
+            if (this.currentView === 'dashboard') {
+                this.render();
+            }
+            
         } catch (error) {
             console.error('Error loading transactions:', error);
             this.transactions = [];
+            this.updateBalance(); // Update balance even if no transactions
+            
+            // Re-render to show updated (empty) state
+            if (this.currentView === 'dashboard') {
+                this.render();
+            }
         }
     }
 
@@ -880,6 +908,8 @@ class ExpensoUI {
             expense,
             total: income - expense
         };
+        
+        console.log('Updated balance:', this.balance, 'from', this.transactions.length, 'transactions');
     }
 
     calculateCategorySpent(category) {

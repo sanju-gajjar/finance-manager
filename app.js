@@ -47,6 +47,7 @@ async function initializeGoogleSheets() {
 }
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID || 'your-spreadsheet-id-here';
+const HISTORICAL_SPREADSHEET_ID = '1E4enkZWyGokrdx3HCTha-pr_VricyQC6'; // Historical data sheet
 
 app.use(cors());
 app.use(express.static('public'));
@@ -149,9 +150,9 @@ async function createSummarySheet() {
 }
 
 // Add entry to Google Sheets
-async function addEntry({ selection, type, description, amount, entryType }) {
-    const timestamp = new Date().toISOString();
-    const entry_date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+async function addEntry({ selection, type, description, amount, date, entryType }) {
+    const timestamp = new Date().toISOString(); // Always current timestamp
+    const entry_date = date || new Date().toISOString().split('T')[0]; // Use provided date or current date
     const currency = 'INR';
     
     // Store locally first (we'll implement IndexedDB later)
@@ -206,18 +207,22 @@ async function getSummaryData(month, year, user) {
         }
         
         // Filter data for specific user/month/year
-        const targetMonth = new Date(`${month} 1, ${year}`).getMonth() + 1;
-        const targetYear = Number('20' + year);
+        const targetMonth = Number(month);
+        const targetYear = Number(year);
         
         const filteredData = rows.filter(row => {
             if (!row[1] || !row[2]) return false; // Skip incomplete rows
             
+            // Parse date from YYYY-MM-DD format
             const entryDate = new Date(row[1]);
             const entryMonth = entryDate.getMonth() + 1;
             const entryYear = entryDate.getFullYear();
             const entryUser = row[2];
             
-            return entryUser === user && entryMonth === targetMonth && entryYear === targetYear;
+            // Case-insensitive user comparison
+            return entryUser.toLowerCase() === user.toLowerCase() && 
+                   entryMonth === targetMonth && 
+                   entryYear === targetYear;
         });
         
         if (!filteredData.length) {
@@ -282,20 +287,20 @@ app.get('/', (req, res) => {
 // Download endpoint removed (no Excel file anymore)
 
 app.post('/submit', async (req, res) => {
-    const { selection, type, description, amount, entryType } = req.body;
-    await addEntry({ selection, type, description, amount, entryType });
+    const { selection, type, description, amount, date, entryType } = req.body;
+    await addEntry({ selection, type, description, amount, date, entryType });
     res.json({ success: true });
 });
 
 app.post('/add-expense', async (req, res) => {
-    const { selection, type, description, amount } = req.body;
-    await addEntry({ selection, type, description, amount, entryType: 'expense' });
+    const { selection, type, description, amount, date } = req.body;
+    await addEntry({ selection, type, description, amount, date, entryType: 'expense' });
     res.json({ success: true, message: 'Expense added successfully' });
 });
 
 app.post('/add-income', async (req, res) => {
-    const { selection, type, description, amount } = req.body;
-    await addEntry({ selection, type, description, amount, entryType: 'income' });
+    const { selection, type, description, amount, date } = req.body;
+    await addEntry({ selection, type, description, amount, date, entryType: 'income' });
     res.json({ success: true, message: 'Income added successfully' });
 });
 
@@ -306,6 +311,37 @@ app.get('/summary', async (req, res) => {
     if (!summary) return res.json({ success: false, message: 'No data found' });
     res.json(summary);
 });
+
+app.get('/analyze-historical-data', async (req, res) => {
+    try {
+        const analysis = await analyzeHistoricalData();
+        res.json(analysis);
+    } catch (error) {
+        console.error('Error analyzing historical data:', error);
+        res.status(500).json({ success: false, message: 'Failed to analyze historical data' });
+    }
+});
+
+app.post('/migrate-historical-data', async (req, res) => {
+    try {
+        const result = await migrateHistoricalData();
+        res.json(result);
+    } catch (error) {
+        console.error('Error migrating historical data:', error);
+        res.status(500).json({ success: false, message: 'Failed to migrate historical data' });
+    }
+});
+
+app.get('/get-smart-insights', async (req, res) => {
+    try {
+        const insights = await getSmartInsights();
+        res.json(insights);
+    } catch (error) {
+        console.error('Error getting smart insights:', error);
+        res.status(500).json({ success: false, message: 'Failed to get insights' });
+    }
+});
+
 
 app.delete('/entry/:id', async (req, res) => {
     const { id } = req.params;
@@ -338,11 +374,219 @@ app.delete('/entry/:id', async (req, res) => {
     }
 });
 
+// Smart Finance Functions
+async function analyzeHistoricalData() {
+    try {
+        if (!sheets) {
+            return { success: false, message: 'Google Sheets not available' };
+        }
+
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
+        let allTransactions = [];
+        let categories = new Set();
+        let userTotals = { Ashi: { income: 0, expense: 0 }, Sanju: { income: 0, expense: 0 } };
+        let monthlyTrends = {};
+
+        for (const month of months) {
+            try {
+                const response = await sheets.spreadsheets.values.get({
+                    spreadsheetId: HISTORICAL_SPREADSHEET_ID,
+                    range: `${month}!A2:Z`, // Get all data from each month tab
+                });
+
+                const rows = response.data.values || [];
+                console.log(`Found ${rows.length} rows in ${month}`);
+                
+                rows.forEach((row, index) => {
+                    if (row.length >= 4 && row[0] && row[1] && row[2] && row[3]) { // Basic validation
+                        const transaction = {
+                            month: month,
+                            date: row[0],
+                            description: row[1],
+                            category: row[2] || 'Other',
+                            amount: parseFloat(row[3]) || 0,
+                            user: row[4] || 'Unknown',
+                            type: parseFloat(row[3]) > 0 ? 'income' : 'expense'
+                        };
+                        
+                        allTransactions.push(transaction);
+                        categories.add(transaction.category);
+                        
+                        // Calculate user totals
+                        const user = transaction.user === 'A' ? 'Ashi' : transaction.user === 'S' ? 'Sanju' : transaction.user;
+                        if (userTotals[user]) {
+                            if (transaction.type === 'income') {
+                                userTotals[user].income += Math.abs(transaction.amount);
+                            } else {
+                                userTotals[user].expense += Math.abs(transaction.amount);
+                            }
+                        }
+                        
+                        // Monthly trends
+                        if (!monthlyTrends[month]) {
+                            monthlyTrends[month] = { income: 0, expense: 0, count: 0 };
+                        }
+                        monthlyTrends[month].count++;
+                        if (transaction.type === 'income') {
+                            monthlyTrends[month].income += Math.abs(transaction.amount);
+                        } else {
+                            monthlyTrends[month].expense += Math.abs(transaction.amount);
+                        }
+                    }
+                });
+            } catch (monthError) {
+                console.log(`No data found for ${month} or error:`, monthError.message);
+            }
+        }
+
+        return {
+            success: true,
+            totalTransactions: allTransactions.length,
+            categories: Array.from(categories).sort(),
+            userTotals,
+            monthlyTrends,
+            sampleTransactions: allTransactions.slice(0, 10) // First 10 for preview
+        };
+    } catch (error) {
+        console.error('Error in analyzeHistoricalData:', error);
+        return { success: false, message: error.message };
+    }
+}
+
+async function migrateHistoricalData() {
+    try {
+        if (!sheets) {
+            return { success: false, message: 'Google Sheets not available' };
+        }
+
+        const analysis = await analyzeHistoricalData();
+        if (!analysis.success) {
+            return analysis;
+        }
+
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
+        let migratedCount = 0;
+        const migrationData = [];
+
+        for (const month of months) {
+            try {
+                const response = await sheets.spreadsheets.values.get({
+                    spreadsheetId: HISTORICAL_SPREADSHEET_ID,
+                    range: `${month}!A2:Z`,
+                });
+
+                const rows = response.data.values || [];
+                const monthIndex = months.indexOf(month) + 1; // 1-12
+
+                rows.forEach((row, index) => {
+                    if (row.length >= 4 && row[0] && row[1] && row[2] && row[3]) {
+                        const timestamp = new Date().toISOString();
+                        const entryDate = `2025-${String(monthIndex).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`;
+                        const user = row[4] === 'A' ? 'Ashi' : row[4] === 'S' ? 'Sanju' : (row[4] || 'Sanju');
+                        const category = row[2] || 'Other';
+                        const description = row[1] || 'Migrated transaction';
+                        const amount = Math.abs(parseFloat(row[3]) || 0);
+                        const entryType = parseFloat(row[3]) > 0 ? 'income' : 'expense';
+                        
+                        migrationData.push([
+                            timestamp,
+                            entryDate,
+                            user,
+                            category,
+                            description,
+                            amount,
+                            entryType,
+                            'INR'
+                        ]);
+                        migratedCount++;
+                    }
+                });
+            } catch (monthError) {
+                console.log(`Error processing ${month}:`, monthError.message);
+            }
+        }
+
+        // Batch insert all data
+        if (migrationData.length > 0) {
+            await sheets.spreadsheets.values.append({
+                spreadsheetId: SPREADSHEET_ID,
+                range: 'Expenses!A:H',
+                valueInputOption: 'RAW',
+                resource: {
+                    values: migrationData
+                }
+            });
+        }
+
+        return {
+            success: true,
+            message: `Successfully migrated ${migratedCount} transactions`,
+            migratedCount
+        };
+    } catch (error) {
+        console.error('Error in migrateHistoricalData:', error);
+        return { success: false, message: error.message };
+    }
+}
+
+async function getSmartInsights() {
+    try {
+        // Get current month data
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
+        
+        // Get data for both users
+        const ashiData = await getSummaryData(currentMonth, currentYear, 'Ashi');
+        const sanjuData = await getSummaryData(currentMonth, currentYear, 'Sanju');
+        
+        // Analyze patterns and predict
+        const insights = {
+            userSplit: {
+                ashi: { income: 0, expense: 0 },
+                sanju: { income: 0, expense: 0 }
+            },
+            recurringTransactions: [],
+            predictions: {},
+            recommendations: []
+        };
+        
+        // Calculate user splits
+        if (ashiData.success !== false) {
+            ashiData.data?.forEach(row => {
+                const amount = Math.abs(parseFloat(row[3]) || 0);
+                if (row[4] === 'income') {
+                    insights.userSplit.ashi.income += amount;
+                } else {
+                    insights.userSplit.ashi.expense += amount;
+                }
+            });
+        }
+        
+        if (sanjuData.success !== false) {
+            sanjuData.data?.forEach(row => {
+                const amount = Math.abs(parseFloat(row[3]) || 0);
+                if (row[4] === 'income') {
+                    insights.userSplit.sanju.income += amount;
+                } else {
+                    insights.userSplit.sanju.expense += amount;
+                }
+            });
+        }
+        
+        return { success: true, insights };
+    } catch (error) {
+        console.error('Error in getSmartInsights:', error);
+        return { success: false, message: error.message };
+    }
+}
+
 // Initialize Google Sheets on startup
 initializeGoogleSheets().then(() => {
     app.listen(port, () => {
         console.log(`🚀 Family Expense Tracker running on http://localhost:${port}`);
         console.log(`📊 Google Sheets ID: ${SPREADSHEET_ID}`);
+        console.log(`📋 Historical Sheets ID: ${HISTORICAL_SPREADSHEET_ID}`);
     });
 }).catch(error => {
     console.error('Failed to start server:', error);
