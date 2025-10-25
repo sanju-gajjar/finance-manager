@@ -2,10 +2,39 @@ class ExpensoUI {
     constructor() {
         this.currentView = 'dashboard';
         this.transactions = [];
-        this.balance = { total: 0, income: 0, expense: 0 };
+        this.balance = { total: 0, income: 0, expense: 0, savings: 0 };
+        this.userSplit = { ashi: { income: 0, expense: 0, savings: 0 }, sanju: { income: 0, expense: 0, savings: 0 } };
         this.budgets = JSON.parse(localStorage.getItem('budgets') || '{}');
         this.settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        this.smartInsights = null;
+        this.categories = [];
+        this.selectedMonth = new Date().getMonth() + 1; // Current month (1-12)
+        this.selectedYear = new Date().getFullYear(); // Current year
+        this.monthlyTrends = null;
+        this.yearlyData = null;
+        this.netWorth = null;
+        this.setupEventListeners();
         this.init();
+    }
+
+    showNotification(text, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <span>${text}</span>
+            <button onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>
+        `;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
     }
 
     async init() {
@@ -57,6 +86,12 @@ class ExpensoUI {
                 return this.renderReports();
             case 'charts':
                 return this.renderCharts();
+            case 'smart':
+                return this.renderSmartFeatures();
+            case 'historical':
+                return this.renderHistoricalView();
+            case 'analytics':
+                return this.renderAnalytics();
             default:
                 return this.renderDashboard();
         }
@@ -66,6 +101,43 @@ class ExpensoUI {
         const recentTransactions = this.transactions.slice(0, 5);
         
         return `
+            <!-- Compact Month Selector -->
+            <div class="compact-month-bar">
+                <div class="month-display" onclick="expensoUI.toggleMonthPicker()">
+                    <span class="month-text">${this.getMonthName(this.selectedMonth)} ${this.selectedYear}</span>
+                    <svg class="dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+                <div class="quick-nav">
+                    <button class="nav-btn" onclick="expensoUI.showHistoricalView()" title="Historical Data">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </button>
+                    <button class="nav-btn" onclick="expensoUI.showAnalytics()" title="Analytics">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Hidden Month Picker -->
+            <div id="monthPicker" class="month-picker-dropdown" style="display: none;">
+                <div class="month-picker-content">
+                    <div class="month-grid">
+                        ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month, index) => `
+                            <button class="month-btn ${this.selectedMonth === index + 1 ? 'active' : ''}" onclick="expensoUI.selectMonth(${index + 1})">${month}</button>
+                        `).join('')}
+                    </div>
+                    <div class="year-picker">
+                        <button class="year-btn ${this.selectedYear === 2024 ? 'active' : ''}" onclick="expensoUI.selectYear(2024)">2024</button>
+                        <button class="year-btn ${this.selectedYear === 2025 ? 'active' : ''}" onclick="expensoUI.selectYear(2025)">2025</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Balance Card -->
             <div class="balance-card">
                 <div class="balance-title">Total Balance</div>
@@ -79,6 +151,33 @@ class ExpensoUI {
                         <div class="balance-stat-label">Expense</div>
                         <div class="balance-stat-value">₹${this.formatAmount(this.balance.expense)}</div>
                     </div>
+                </div>
+            </div>
+
+            <!-- User Split Cards -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin: var(--space-md) 0;">
+                <div class="user-split-card ashi">
+                    <div class="user-split-header">
+                        <div class="user-avatar">A</div>
+                        <div class="user-name">Ashi</div>
+                    </div>
+                    <div class="user-split-amounts">
+                        <div class="user-split-income">+₹${this.formatAmount(this.userSplit.ashi?.income || 0)}</div>
+                        <div class="user-split-expense">-₹${this.formatAmount(this.userSplit.ashi?.expense || 0)}</div>
+                    </div>
+                    <div class="user-split-net">₹${this.formatAmount((this.userSplit.ashi?.income || 0) - (this.userSplit.ashi?.expense || 0))}</div>
+                </div>
+                
+                <div class="user-split-card sanju">
+                    <div class="user-split-header">
+                        <div class="user-avatar">S</div>
+                        <div class="user-name">Sanju</div>
+                    </div>
+                    <div class="user-split-amounts">
+                        <div class="user-split-income">+₹${this.formatAmount(this.userSplit.sanju?.income || 0)}</div>
+                        <div class="user-split-expense">-₹${this.formatAmount(this.userSplit.sanju?.expense || 0)}</div>
+                    </div>
+                    <div class="user-split-net">₹${this.formatAmount((this.userSplit.sanju?.income || 0) - (this.userSplit.sanju?.expense || 0))}</div>
                 </div>
             </div>
 
@@ -170,6 +269,78 @@ class ExpensoUI {
                     <button class="btn btn-primary" onclick="expensoUI.showAddTransaction('expense')">Add Transaction</button>
                 </div>
             `}
+        `;
+    }
+
+    renderSmartFeatures() {
+        return `
+            <div class="section-header">
+                <h2 class="section-title">Smart Finance Manager</h2>
+                <button class="btn btn-sm btn-primary" onclick="expensoUI.refreshSmartInsights()">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+
+            <!-- Data Migration Section -->
+            <div class="card mb-lg">
+                <div class="card-header">
+                    <h3 class="card-title">Historical Data Migration</h3>
+                </div>
+                <div class="card-body">
+                    <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
+                        Import your historical data from Jan-Sep 2025 to get complete insights and predictions.
+                    </p>
+                    <div style="display: flex; gap: var(--space-md);">
+                        <button class="btn btn-secondary" onclick="expensoUI.analyzeHistoricalData()">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                            Analyze Data
+                        </button>
+                        <button class="btn btn-primary" onclick="expensoUI.migrateHistoricalData()">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                            </svg>
+                            Migrate All Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Smart Insights Section -->
+            <div class="card mb-lg">
+                <div class="card-header">
+                    <h3 class="card-title">AI Predictions & Insights</h3>
+                </div>
+                <div class="card-body" id="smartInsightsContent">
+                    <div class="empty-state">
+                        <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                        <h3 class="empty-state-title">AI Insights Loading...</h3>
+                        <p class="empty-state-description">Click refresh to get smart predictions and recurring transaction suggestions</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recurring Transactions -->
+            <div class="card mb-lg">
+                <div class="card-header">
+                    <h3 class="card-title">Recurring Transaction Suggestions</h3>
+                </div>
+                <div class="card-body" id="recurringTransactionsContent">
+                    <div class="empty-state">
+                        <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <h3 class="empty-state-title">No Recurring Patterns Yet</h3>
+                        <p class="empty-state-description">Add more transactions to detect recurring patterns</p>
+                    </div>
+                </div>
+            </div>
         `;
     }
 
@@ -373,6 +544,13 @@ class ExpensoUI {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                         </svg>
                         <span class="bottom-nav-label">Charts</span>
+                    </a>
+                    
+                    <a href="#" class="bottom-nav-item ${this.currentView === 'smart' ? 'active' : ''}" onclick="expensoUI.switchView('smart')">
+                        <svg class="bottom-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                        <span class="bottom-nav-label">Smart</span>
                     </a>
                 </div>
             </div>
@@ -829,11 +1007,11 @@ class ExpensoUI {
     }
 
     // Data management
-    async loadTransactions() {
+    async loadTransactions(cacheBust = null) {
         try {
-            const currentDate = new Date();
-            const month = currentDate.getMonth() + 1;
-            const year = currentDate.getFullYear();
+            // Use selected month and year instead of current date
+            const month = this.selectedMonth;
+            const year = this.selectedYear;
             
             console.log(`Loading transactions for month: ${month}, year: ${year}`);
             
@@ -843,7 +1021,8 @@ class ExpensoUI {
             
             for (const user of users) {
                 try {
-                    const response = await fetch(`/summary?month=${month}&year=${year}&user=${user}`);
+                    const cacheBustParam = cacheBust ? `&_t=${cacheBust}` : '';
+                    const response = await fetch(`/summary?month=${month}&year=${year}&user=${user}${cacheBustParam}`);
                     if (response.ok) {
                         const summaryData = await response.json();
                         if (summaryData.success !== false && summaryData.data) {
@@ -893,13 +1072,23 @@ class ExpensoUI {
     updateBalance() {
         let income = 0;
         let expense = 0;
+        
+        // Reset user splits
+        this.userSplit = {
+            ashi: { income: 0, expense: 0 },
+            sanju: { income: 0, expense: 0 }
+        };
 
         this.transactions.forEach(transaction => {
             const amount = Math.abs(parseFloat(transaction.amount) || 0);
+            const user = transaction.user?.toLowerCase() === 'ashi' ? 'ashi' : 'sanju';
+            
             if (transaction.type === 'income') {
                 income += amount;
+                this.userSplit[user].income += amount;
             } else {
                 expense += amount;
+                this.userSplit[user].expense += amount;
             }
         });
 
@@ -909,7 +1098,256 @@ class ExpensoUI {
             total: income - expense
         };
         
-        console.log('Updated balance:', this.balance, 'from', this.transactions.length, 'transactions');
+        console.log('Updated balance:', this.balance, 'User split:', this.userSplit, 'from', this.transactions.length, 'transactions');
+    }
+
+    async loadCategories() {
+        try {
+            const response = await fetch('/api/categories');
+            if (response.ok) {
+                this.categories = await response.json();
+            }
+        } catch (error) {
+            console.error('Error loading categories:', error);
+        }
+    }
+
+    async loadMonthlyTrends() {
+        try {
+            const response = await fetch('/api/monthly-trends');
+            if (response.ok) {
+                this.monthlyTrends = await response.json();
+            }
+        } catch (error) {
+            console.error('Error loading monthly trends:', error);
+        }
+    }
+
+    async loadYearlyData() {
+        try {
+            const response = await fetch('/api/yearly-summary');
+            if (response.ok) {
+                this.yearlyData = await response.json();
+            }
+        } catch (error) {
+            console.error('Error loading yearly data:', error);
+        }
+    }
+
+    async loadNetWorth() {
+        try {
+            const response = await fetch('/api/net-worth');
+            if (response.ok) {
+                this.netWorth = await response.json();
+            }
+        } catch (error) {
+            console.error('Error loading net worth:', error);
+        }
+    }
+
+    toggleMonthPicker() {
+        const picker = document.getElementById('monthPicker');
+        if (picker) {
+            picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+
+    async selectMonth(month) {
+        this.selectedMonth = month;
+        await this.refreshData();
+        this.toggleMonthPicker();
+    }
+
+    async selectYear(year) {
+        this.selectedYear = year;
+        await this.refreshData();
+        this.toggleMonthPicker();
+    }
+
+    async refreshData() {
+        await this.loadTransactions();
+        this.render();
+        this.showNotification(`Switched to ${this.getMonthName(this.selectedMonth)} ${this.selectedYear}`, 'success');
+    }
+
+    setupEventListeners() {
+        // Close month picker when clicking outside
+        document.addEventListener('click', (event) => {
+            const picker = document.getElementById('monthPicker');
+            const monthDisplay = event.target.closest('.month-display');
+            
+            if (picker && picker.style.display !== 'none' && !monthDisplay && !picker.contains(event.target)) {
+                picker.style.display = 'none';
+            }
+        });
+
+        // Pull to refresh implementation
+        let startY = 0;
+        let currentY = 0;
+        let pullDistance = 0;
+        let isPulling = false;
+        let refreshThreshold = 80; // minimum pull distance for refresh
+        
+        const mainContent = document.querySelector('.main-content') || document.body;
+        
+        // Touch start
+        document.addEventListener('touchstart', (e) => {
+            if (mainContent.scrollTop <= 0) {
+                startY = e.touches[0].clientY;
+                isPulling = true;
+            }
+        }, { passive: true });
+        
+        // Touch move
+        document.addEventListener('touchmove', (e) => {
+            if (!isPulling) return;
+            
+            currentY = e.touches[0].clientY;
+            pullDistance = currentY - startY;
+            
+            if (pullDistance > 0 && mainContent.scrollTop <= 0) {
+                e.preventDefault();
+                
+                // Create or update pull indicator
+                let pullIndicator = document.querySelector('.pull-refresh-indicator');
+                if (!pullIndicator) {
+                    pullIndicator = document.createElement('div');
+                    pullIndicator.className = 'pull-refresh-indicator';
+                    pullIndicator.innerHTML = `
+                        <div class="pull-refresh-content">
+                            <div class="pull-refresh-spinner"></div>
+                            <span class="pull-refresh-text">Pull to refresh & reset to current month</span>
+                        </div>
+                    `;
+                    document.body.insertBefore(pullIndicator, document.body.firstChild);
+                }
+                
+                // Update indicator based on pull distance
+                const progress = Math.min(pullDistance / refreshThreshold, 1);
+                pullIndicator.style.transform = `translateY(${Math.min(pullDistance, refreshThreshold)}px)`;
+                pullIndicator.style.opacity = progress;
+                
+                const spinner = pullIndicator.querySelector('.pull-refresh-spinner');
+                const text = pullIndicator.querySelector('.pull-refresh-text');
+                
+                if (pullDistance >= refreshThreshold) {
+                    spinner.style.transform = 'rotate(180deg)';
+                    text.textContent = 'Release to refresh & reset';
+                    pullIndicator.classList.add('ready');
+                } else {
+                    spinner.style.transform = `rotate(${progress * 180}deg)`;
+                    text.textContent = 'Pull to refresh & reset to current month';
+                    pullIndicator.classList.remove('ready');
+                }
+            }
+        }, { passive: false });
+        
+        // Touch end
+        document.addEventListener('touchend', () => {
+            if (!isPulling) return;
+            
+            const pullIndicator = document.querySelector('.pull-refresh-indicator');
+            
+            if (pullDistance >= refreshThreshold) {
+                // Trigger refresh
+                this.performPullRefresh();
+            }
+            
+            // Reset
+            if (pullIndicator) {
+                pullIndicator.style.transform = 'translateY(-100%)';
+                pullIndicator.style.opacity = '0';
+                setTimeout(() => pullIndicator?.remove(), 300);
+            }
+            
+            isPulling = false;
+            pullDistance = 0;
+            startY = 0;
+            currentY = 0;
+        }, { passive: true });
+    }
+
+    async performPullRefresh() {
+        try {
+            // Show loading indicator
+            this.showNotification('Refreshing & resetting to current month...', 'info', 1000);
+            
+            // Clear all cached data
+            this.transactions = [];
+            this.categories = [];
+            this.monthlyTrends = [];
+            this.yearlyData = null;
+            this.netWorth = null;
+            
+            // Reset to current month/year
+            const now = new Date();
+            this.selectedMonth = now.getMonth() + 1;
+            this.selectedYear = now.getFullYear();
+            
+            // Reset balance
+            this.balance = {
+                income: 0,
+                expense: 0,
+                total: 0,
+                savings: 0
+            };
+            
+            // Reset user split
+            this.userSplit = {
+                ashi: { income: 0, expense: 0 },
+                sanju: { income: 0, expense: 0 }
+            };
+            
+            // Force cache clear by adding timestamp to requests
+            const timestamp = Date.now();
+            
+            // Reload fresh data
+            await this.loadTransactions(timestamp);
+            
+            // Reset to dashboard view
+            this.currentView = 'dashboard';
+            
+            // Re-render
+            this.render();
+            
+            // Show success notification
+            this.showNotification(`Refreshed! Showing ${this.getMonthName(this.selectedMonth)} ${this.selectedYear}`, 'success');
+            
+        } catch (error) {
+            console.error('Pull refresh error:', error);
+            this.showNotification('Refresh failed. Please try again.', 'error');
+        }
+    }
+
+    getMonthName(month) {
+        const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+        return months[month - 1];
+    }
+
+    async showHistoricalView() {
+        this.currentView = 'historical';
+        
+        // Load all necessary data
+        await Promise.all([
+            this.loadYearlyData(),
+            this.loadMonthlyTrends()
+        ]);
+        
+        this.render();
+    }
+
+    async showAnalytics() {
+        this.currentView = 'analytics';
+        
+        // Load all analytics data
+        await Promise.all([
+            this.loadCategories(),
+            this.loadMonthlyTrends(),
+            this.loadNetWorth()
+        ]);
+        
+        this.render();
     }
 
     calculateCategorySpent(category) {
@@ -1323,6 +1761,123 @@ class ExpensoUI {
         this.showNotification('Charts refreshed successfully!', 'success');
     }
 
+    // Smart Features
+    async analyzeHistoricalData() {
+        try {
+            this.showNotification('Analyzing historical data...', 'info');
+            const response = await fetch('/analyze-historical-data');
+            
+            if (response.ok) {
+                const analysis = await response.json();
+                if (analysis.success) {
+                    this.showNotification(`Found ${analysis.totalTransactions} transactions with ${analysis.categories.length} categories`, 'success');
+                    
+                    // Update categories in forms
+                    this.updateCategoriesFromAnalysis(analysis.categories);
+                    
+                    // Show analysis results
+                    console.log('Historical Analysis:', analysis);
+                } else {
+                    throw new Error(analysis.message);
+                }
+            } else {
+                throw new Error('Failed to analyze data');
+            }
+        } catch (error) {
+            console.error('Error analyzing historical data:', error);
+            this.showNotification('Failed to analyze historical data: ' + error.message, 'error');
+        }
+    }
+    
+    async migrateHistoricalData() {
+        if (!confirm('This will import all historical data from Jan-Sep 2025. Continue?')) {
+            return;
+        }
+        
+        try {
+            this.showNotification('Migrating historical data... This may take a moment.', 'info');
+            const response = await fetch('/migrate-historical-data', { method: 'POST' });
+            
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    this.showNotification(result.message, 'success');
+                    // Reload transactions to show migrated data
+                    await this.loadTransactions();
+                    this.render();
+                } else {
+                    throw new Error(result.message);
+                }
+            } else {
+                throw new Error('Failed to migrate data');
+            }
+        } catch (error) {
+            console.error('Error migrating historical data:', error);
+            this.showNotification('Failed to migrate data: ' + error.message, 'error');
+        }
+    }
+    
+    async refreshSmartInsights() {
+        try {
+            this.showNotification('Getting smart insights...', 'info');
+            const response = await fetch('/get-smart-insights');
+            
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    this.smartInsights = result.insights;
+                    this.updateSmartInsightsDisplay();
+                    this.showNotification('Smart insights updated!', 'success');
+                } else {
+                    throw new Error(result.message);
+                }
+            } else {
+                throw new Error('Failed to get insights');
+            }
+        } catch (error) {
+            console.error('Error getting smart insights:', error);
+            this.showNotification('Failed to get insights: ' + error.message, 'error');
+        }
+    }
+    
+    updateCategoriesFromAnalysis(categories) {
+        // Store categories for use in forms
+        this.discoveredCategories = categories;
+        console.log('Updated categories from historical data:', categories);
+    }
+    
+    updateSmartInsightsDisplay() {
+        const container = document.getElementById('smartInsightsContent');
+        if (!container || !this.smartInsights) return;
+        
+        const insights = this.smartInsights;
+        container.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg);">
+                <div class="insight-card">
+                    <h4>Monthly Prediction</h4>
+                    <p>Based on current trends, you're likely to spend <strong>₹${this.formatAmount(this.predictMonthlyExpense())}</strong> this month.</p>
+                </div>
+                
+                <div class="insight-card">
+                    <h4>Spending Pattern</h4>
+                    <p>Your average daily expense is <strong>₹${this.formatAmount(this.balance.expense / new Date().getDate())}</strong>.</p>
+                </div>
+                
+                <div class="insight-card">
+                    <h4>User Comparison</h4>
+                    <p>Ashi: ₹${this.formatAmount(insights.userSplit.ashi.expense)} | Sanju: ₹${this.formatAmount(insights.userSplit.sanju.expense)}</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    predictMonthlyExpense() {
+        const currentDay = new Date().getDate();
+        const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+        const dailyAverage = this.balance.expense / currentDay;
+        return dailyAverage * daysInMonth;
+    }
+
     // Utility methods
     formatAmount(amount) {
         return new Intl.NumberFormat('en-IN', {
@@ -1421,6 +1976,164 @@ class ExpensoUI {
                 }
             }
         });
+    }
+
+    renderHistoricalView() {
+        return `
+            <div class="header-with-back">
+                <button class="btn-back" onclick="expensoUI.currentView='dashboard'; expensoUI.render();">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <h2>Historical Data</h2>
+            </div>
+
+            <!-- Yearly Summary -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">2025 Yearly Summary</h3>
+                </div>
+                <div class="card-body">
+                    ${this.yearlyData ? `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                            <div style="text-align: center; padding: 16px; background: var(--bg-secondary); border-radius: 12px;">
+                                <div style="font-size: 24px; font-weight: 700; color: var(--success);">₹${this.formatAmount(this.yearlyData.totalIncome)}</div>
+                                <div style="font-size: 14px; color: var(--text-secondary);">Total Income</div>
+                            </div>
+                            <div style="text-align: center; padding: 16px; background: var(--bg-secondary); border-radius: 12px;">
+                                <div style="font-size: 24px; font-weight: 700; color: var(--danger);">₹${this.formatAmount(this.yearlyData.totalExpense)}</div>
+                                <div style="font-size: 14px; color: var(--text-secondary);">Total Expense</div>
+                            </div>
+                            <div style="text-align: center; padding: 16px; background: var(--bg-secondary); border-radius: 12px;">
+                                <div style="font-size: 24px; font-weight: 700; color: var(--text-primary);">₹${this.formatAmount(this.yearlyData.savings)}</div>
+                                <div style="font-size: 14px; color: var(--text-secondary);">Net Savings</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 16px;">
+                            <h4 style="margin-bottom: 12px;">Monthly Breakdown</h4>
+                            ${this.yearlyData.monthlyBreakdown ? this.yearlyData.monthlyBreakdown.map(month => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--bg-secondary);">
+                                    <span style="font-weight: 500;">${month.month}</span>
+                                    <div style="text-align: right;">
+                                        <div style="color: var(--success); font-size: 14px;">+₹${this.formatAmount(month.income)}</div>
+                                        <div style="color: var(--danger); font-size: 14px;">-₹${this.formatAmount(month.expense)}</div>
+                                        <div style="font-weight: 600;">₹${this.formatAmount(month.income - month.expense)}</div>
+                                    </div>
+                                </div>
+                            `).join('') : ''}
+                        </div>
+                    ` : `
+                        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <div>Loading yearly summary...</div>
+                        </div>
+                    `}
+                </div>
+            </div>
+
+            <!-- Monthly Trends Chart -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Monthly Trends</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="trendsChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        `;
+    }
+
+    renderAnalytics() {
+        return `
+            <div class="header-with-back">
+                <button class="btn-back" onclick="expensoUI.currentView='dashboard'; expensoUI.render();">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <h2>Analytics Dashboard</h2>
+            </div>
+
+            <!-- Net Worth Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Net Worth Tracking</h3>
+                </div>
+                <div class="card-body">
+                    ${this.netWorth ? `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                            <div style="text-align: center; padding: 16px; background: var(--bg-secondary); border-radius: 12px;">
+                                <div style="font-size: 20px; font-weight: 700; color: var(--success);">₹${this.formatAmount(this.netWorth.totalSavings)}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">Total Savings</div>
+                            </div>
+                            <div style="text-align: center; padding: 16px; background: var(--bg-secondary); border-radius: 12px;">
+                                <div style="font-size: 20px; font-weight: 700; color: var(--primary);">₹${this.formatAmount(this.netWorth.totalInvestments)}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">Total Investments</div>
+                            </div>
+                            <div style="text-align: center; padding: 16px; background: var(--bg-secondary); border-radius: 12px;">
+                                <div style="font-size: 20px; font-weight: 700; color: var(--text-primary);">₹${this.formatAmount(this.netWorth.netWorth)}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">Net Worth</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 16px;">
+                            <h4 style="margin-bottom: 12px;">Monthly Net Worth Growth</h4>
+                            ${this.netWorth.monthlyGrowth ? this.netWorth.monthlyGrowth.map(month => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--bg-secondary);">
+                                    <span style="font-weight: 500;">${month.month}</span>
+                                    <div style="text-align: right;">
+                                        <div style="font-weight: 600; color: ${month.growth >= 0 ? 'var(--success)' : 'var(--danger)'};">
+                                            ${month.growth >= 0 ? '+' : ''}₹${this.formatAmount(Math.abs(month.growth))}
+                                        </div>
+                                        <div style="font-size: 14px; color: var(--text-secondary);">₹${this.formatAmount(month.netWorth)}</div>
+                                    </div>
+                                </div>
+                            `).join('') : ''}
+                        </div>
+                    ` : `
+                        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <div>Loading net worth data...</div>
+                        </div>
+                    `}
+                </div>
+            </div>
+
+            <!-- Category Analysis -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Category Analysis</h3>
+                </div>
+                <div class="card-body">
+                    ${this.categories && this.categories.length ? `
+                        ${this.categories.map(category => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--bg-secondary);">
+                                <div>
+                                    <span style="font-weight: 500;">${category.category}</span>
+                                    <div style="font-size: 14px; color: var(--text-secondary);">${category.transactionCount} transactions</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-weight: 600; color: var(--danger);">₹${this.formatAmount(category.totalAmount)}</div>
+                                    <div style="font-size: 14px; color: var(--text-secondary);">${((category.totalAmount / this.balance.expense) * 100).toFixed(1)}%</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    ` : `
+                        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <div>Loading category analysis...</div>
+                        </div>
+                    `}
+                </div>
+            </div>
+
+            <!-- Monthly Trends Chart -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Monthly Comparison</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="analyticsChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        `;
     }
 }
 
