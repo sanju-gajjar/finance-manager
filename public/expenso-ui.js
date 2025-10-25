@@ -1103,7 +1103,7 @@ class ExpensoUI {
 
     async loadCategories() {
         try {
-            const response = await fetch('/api/categories');
+            const response = await fetch('/categories');
             if (response.ok) {
                 this.categories = await response.json();
             }
@@ -1114,10 +1114,21 @@ class ExpensoUI {
 
     async loadMonthlyTrends() {
         try {
-            const response = await fetch('/api/monthly-trends');
-            if (response.ok) {
-                this.monthlyTrends = await response.json();
+            // Load trends for both users and combine
+            const users = ['Ashi', 'Sanju'];
+            let allTrends = [];
+            
+            for (const user of users) {
+                const response = await fetch(`/monthly-trends?year=${this.selectedYear}&user=${user}`);
+                if (response.ok) {
+                    const trends = await response.json();
+                    if (trends && Array.isArray(trends)) {
+                        allTrends = allTrends.concat(trends.map(trend => ({ ...trend, user })));
+                    }
+                }
             }
+            
+            this.monthlyTrends = allTrends;
         } catch (error) {
             console.error('Error loading monthly trends:', error);
         }
@@ -1125,10 +1136,41 @@ class ExpensoUI {
 
     async loadYearlyData() {
         try {
-            const response = await fetch('/api/yearly-summary');
-            if (response.ok) {
-                this.yearlyData = await response.json();
+            // Load yearly data for both users and combine
+            const users = ['Ashi', 'Sanju'];
+            let combinedData = {
+                totalIncome: 0,
+                totalExpense: 0,
+                savings: 0,
+                monthlyBreakdown: []
+            };
+            
+            for (const user of users) {
+                const response = await fetch(`/yearly-summary?year=${this.selectedYear}&user=${user}`);
+                if (response.ok) {
+                    const yearlyData = await response.json();
+                    if (yearlyData) {
+                        combinedData.totalIncome += yearlyData.totalIncome || 0;
+                        combinedData.totalExpense += yearlyData.totalExpense || 0;
+                        combinedData.savings += yearlyData.savings || 0;
+                        
+                        // Merge monthly breakdown
+                        if (yearlyData.monthlyBreakdown) {
+                            yearlyData.monthlyBreakdown.forEach(monthData => {
+                                const existingMonth = combinedData.monthlyBreakdown.find(m => m.month === monthData.month);
+                                if (existingMonth) {
+                                    existingMonth.income += monthData.income || 0;
+                                    existingMonth.expense += monthData.expense || 0;
+                                } else {
+                                    combinedData.monthlyBreakdown.push({ ...monthData });
+                                }
+                            });
+                        }
+                    }
+                }
             }
+            
+            this.yearlyData = combinedData;
         } catch (error) {
             console.error('Error loading yearly data:', error);
         }
@@ -1136,10 +1178,41 @@ class ExpensoUI {
 
     async loadNetWorth() {
         try {
-            const response = await fetch('/api/net-worth');
-            if (response.ok) {
-                this.netWorth = await response.json();
+            // Load net worth for both users and combine
+            const users = ['Ashi', 'Sanju'];
+            let combinedNetWorth = {
+                totalSavings: 0,
+                totalInvestments: 0,
+                netWorth: 0,
+                monthlyGrowth: []
+            };
+            
+            for (const user of users) {
+                const response = await fetch(`/net-worth?user=${user}`);
+                if (response.ok) {
+                    const netWorth = await response.json();
+                    if (netWorth) {
+                        combinedNetWorth.totalSavings += netWorth.totalSavings || 0;
+                        combinedNetWorth.totalInvestments += netWorth.totalInvestments || 0;
+                        combinedNetWorth.netWorth += netWorth.netWorth || 0;
+                        
+                        // Merge monthly growth data
+                        if (netWorth.monthlyGrowth) {
+                            netWorth.monthlyGrowth.forEach(monthData => {
+                                const existingMonth = combinedNetWorth.monthlyGrowth.find(m => m.month === monthData.month);
+                                if (existingMonth) {
+                                    existingMonth.growth += monthData.growth || 0;
+                                    existingMonth.netWorth += monthData.netWorth || 0;
+                                } else {
+                                    combinedNetWorth.monthlyGrowth.push({ ...monthData });
+                                }
+                            });
+                        }
+                    }
+                }
             }
+            
+            this.netWorth = combinedNetWorth;
         } catch (error) {
             console.error('Error loading net worth:', error);
         }
