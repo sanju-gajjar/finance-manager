@@ -14,6 +14,13 @@ A comprehensive, mobile-first expense tracking Progressive Web App (PWA) with:
 - **Visual Analytics**: Interactive charts and graphs
 - **PWA Features**: Install as app, works offline
 - **Advanced Reporting**: Export to PDF, CSV, JSON
+- **🆕 Financial Insights & Savings Optimization**: AI-powered insights based on expert principles (Ramit Sethi, Dave Ramsey, Elizabeth Warren, Morgan Housel)
+  - Financial Health Score (0-100)
+  - 50/30/20 Rule visualization
+  - Behavioral insights and spending patterns
+  - Actionable suggestions prioritized by impact
+  - Emergency fund health tracking
+  - Lifestyle inflation detection
 
 ### 🚀 **Getting Started**
 
@@ -221,10 +228,47 @@ Your Family Expense Tracker is now ready!
 ✅ Use offline on mobile  
 ✅ Sync data to Google Sheets  
 ✅ Install as mobile app  
+✅ Get AI-powered financial insights and savings optimization
 
 ### **Next Steps:**
 1. Install as PWA on all family phones
 2. Set up Google Sheets integration
+3. Add at least 2-3 months of transaction data
+4. Navigate to "Insights" tab to get personalized financial advice
+5. Review and implement actionable suggestions
+
+## 💡 **Financial Insights Feature**
+
+### What You Get:
+- **Financial Health Score (0-100)**: Comprehensive scoring based on savings rate, spending balance, consistency, and anomaly control
+- **Expert Principles**: Insights based on Ramit Sethi (Conscious Spending), Dave Ramsey (Zero-Based Budgeting), Elizabeth Warren (50/30/20 Rule), and Morgan Housel (Behavioral Finance)
+- **Smart Analysis**: 
+  - Current month vs last month comparison
+  - 3-month moving averages
+  - Category-wise spending breakdown
+  - Needs vs Wants vs Savings analysis
+  - Emergency fund health check
+  - Lifestyle inflation detection
+- **Actionable Suggestions**: Prioritized action plan with high/medium/low impact ratings
+- **Visual Dashboards**: Progress bars, trend indicators, and color-coded insights
+
+### How to Use:
+1. Navigate to the **"Insights"** tab in the bottom navigation
+2. Click **"Refresh Insights"** to analyze your latest data
+3. Review your **Financial Health Score** and breakdown
+4. Check **50/30/20 Rule** adherence in the spending balance section
+5. Read **Expert Insights** for behavioral patterns
+6. Follow the **Action Plan** with prioritized steps
+7. Track your **top spending categories** and month-over-month changes
+
+### Customization:
+Edit thresholds and parameters in `/services/financialInsightsService.js`:
+- Target savings rate (default: 20%)
+- Category warning thresholds (default: 25% of income)
+- Emergency fund targets (default: 3-6 months)
+- 50/30/20 rule percentages
+
+For detailed documentation, see [FINANCIAL_INSIGHTS_DOCUMENTATION.md](./FINANCIAL_INSIGHTS_DOCUMENTATION.md)
 3. Configure recurring transactions (salary, EMIs)
 4. Set monthly budgets
 5. Start tracking your family's expenses!

@@ -13,6 +13,9 @@ class ExpensoUI {
         this.monthlyTrends = null;
         this.yearlyData = null;
         this.netWorth = null;
+        this.incomeVisible = false; // Privacy toggle for income amounts
+        this.selectedUserFilter = 'all'; // Filter for transactions: 'all', 'ashi', 'sanju'
+        this.eventsBound = false; // Track if events are already bound
         this.setupEventListeners();
         this.init();
     }
@@ -80,8 +83,8 @@ class ExpensoUI {
                 return this.renderDashboard();
             case 'transactions':
                 return this.renderTransactions();
-            case 'budget':
-                return this.renderBudget();
+            case 'insights':
+                return this.renderInsights();
             case 'reports':
                 return this.renderReports();
             case 'charts':
@@ -144,8 +147,18 @@ class ExpensoUI {
                 <div class="balance-amount">₹${this.formatAmount(this.balance.total)}</div>
                 <div class="balance-stats">
                     <div class="balance-stat income">
-                        <div class="balance-stat-label">Income</div>
-                        <div class="balance-stat-value">₹${this.formatAmount(this.balance.income)}</div>
+                        <div class="balance-stat-label">
+                            Income 
+                            <button class="eye-toggle" onclick="expensoUI.toggleIncomeVisibility()" title="${this.incomeVisible ? 'Hide' : 'Show'} income amounts">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                                    ${this.incomeVisible 
+                                        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>'
+                                        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>'
+                                    }
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="balance-stat-value">₹${this.formatIncomeAmount(this.balance.income)}</div>
                     </div>
                     <div class="balance-stat expense">
                         <div class="balance-stat-label">Expense</div>
@@ -162,10 +175,10 @@ class ExpensoUI {
                         <div class="user-name">Ashi</div>
                     </div>
                     <div class="user-split-amounts">
-                        <div class="user-split-income">+₹${this.formatAmount(this.userSplit.ashi?.income || 0)}</div>
+                        <div class="user-split-income">+₹${this.formatIncomeAmount(this.userSplit.ashi?.income || 0)}</div>
                         <div class="user-split-expense">-₹${this.formatAmount(this.userSplit.ashi?.expense || 0)}</div>
                     </div>
-                    <div class="user-split-net">₹${this.formatAmount((this.userSplit.ashi?.income || 0) - (this.userSplit.ashi?.expense || 0))}</div>
+                    <div class="user-split-net">₹${this.incomeVisible ? this.formatAmount((this.userSplit.ashi?.income || 0) - (this.userSplit.ashi?.expense || 0)) : '••••••'}</div>
                 </div>
                 
                 <div class="user-split-card sanju">
@@ -174,10 +187,10 @@ class ExpensoUI {
                         <div class="user-name">Sanju</div>
                     </div>
                     <div class="user-split-amounts">
-                        <div class="user-split-income">+₹${this.formatAmount(this.userSplit.sanju?.income || 0)}</div>
+                        <div class="user-split-income">+₹${this.formatIncomeAmount(this.userSplit.sanju?.income || 0)}</div>
                         <div class="user-split-expense">-₹${this.formatAmount(this.userSplit.sanju?.expense || 0)}</div>
                     </div>
-                    <div class="user-split-net">₹${this.formatAmount((this.userSplit.sanju?.income || 0) - (this.userSplit.sanju?.expense || 0))}</div>
+                    <div class="user-split-net">₹${this.incomeVisible ? this.formatAmount((this.userSplit.sanju?.income || 0) - (this.userSplit.sanju?.expense || 0)) : '••••••'}</div>
                 </div>
             </div>
 
@@ -236,9 +249,11 @@ class ExpensoUI {
     }
 
     renderTransactions() {
+        const filteredTransactions = this.getFilteredTransactions();
+        
         return `
             <div class="section-header">
-                <h2 class="section-title">All Transactions</h2>
+                <h2 class="section-title">Transactions</h2>
                 <div style="display: flex; gap: 8px;">
                     <button class="btn btn-sm btn-secondary" onclick="expensoUI.showSearch()">
                         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,9 +270,20 @@ class ExpensoUI {
                 </div>
             </div>
 
-            ${this.transactions.length > 0 ? `
+            <!-- User Filter -->
+            <div class="user-filter-container">
+                <div class="user-filter-label">Filter by user:</div>
+                <div class="user-filter-buttons">
+                    <button class="filter-btn ${this.selectedUserFilter === 'all' ? 'active' : ''}" onclick="expensoUI.setUserFilter('all')">All</button>
+                    <button class="filter-btn ${this.selectedUserFilter === 'ashi' ? 'active' : ''}" onclick="expensoUI.setUserFilter('ashi')">Ashi</button>
+                    <button class="filter-btn ${this.selectedUserFilter === 'sanju' ? 'active' : ''}" onclick="expensoUI.setUserFilter('sanju')">Sanju</button>
+                </div>
+                <div class="filter-count">${filteredTransactions.length} transaction${filteredTransactions.length !== 1 ? 's' : ''}</div>
+            </div>
+
+            ${filteredTransactions.length > 0 ? `
                 <div class="transaction-list">
-                    ${this.transactions.map(transaction => this.renderTransactionCard(transaction)).join('')}
+                    ${filteredTransactions.map(transaction => this.renderTransactionCard(transaction)).join('')}
                 </div>
             ` : `
                 <div class="empty-state">
@@ -265,10 +291,34 @@ class ExpensoUI {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                     </svg>
                     <h3 class="empty-state-title">No transactions found</h3>
-                    <p class="empty-state-description">Add your first transaction to get started</p>
+                    <p class="empty-state-description">${this.selectedUserFilter === 'all' ? 'Add your first transaction to get started' : `No transactions found for ${this.selectedUserFilter}`}</p>
                     <button class="btn btn-primary" onclick="expensoUI.showAddTransaction('expense')">Add Transaction</button>
                 </div>
             `}
+        `;
+    }
+
+    renderInsights() {
+        return `
+            <div class="section-header">
+                <h2 class="section-title">Financial Insights & Savings Optimization</h2>
+                <button class="btn btn-sm btn-primary" onclick="expensoUI.loadFinancialInsights()">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Refresh Insights
+                </button>
+            </div>
+
+            <div id="financialInsightsContainer">
+                <div class="loading-state" style="text-align: center; padding: var(--space-xxl);">
+                    <svg class="loading-spinner" style="width: 48px; height: 48px; animation: spin 1s linear infinite; color: var(--primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <h3 style="margin-top: var(--space-lg); color: var(--text-primary);">Analyzing Your Financial Data...</h3>
+                    <p style="color: var(--text-secondary); margin-top: var(--space-sm);">Applying insights from financial experts...</p>
+                </div>
+            </div>
         `;
     }
 
@@ -284,32 +334,6 @@ class ExpensoUI {
                 </button>
             </div>
 
-            <!-- Data Migration Section -->
-            <div class="card mb-lg">
-                <div class="card-header">
-                    <h3 class="card-title">Historical Data Migration</h3>
-                </div>
-                <div class="card-body">
-                    <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
-                        Import your historical data from Jan-Sep 2025 to get complete insights and predictions.
-                    </p>
-                    <div style="display: flex; gap: var(--space-md);">
-                        <button class="btn btn-secondary" onclick="expensoUI.analyzeHistoricalData()">
-                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
-                            Analyze Data
-                        </button>
-                        <button class="btn btn-primary" onclick="expensoUI.migrateHistoricalData()">
-                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-                            </svg>
-                            Migrate All Data
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             <!-- Smart Insights Section -->
             <div class="card mb-lg">
                 <div class="card-header">
@@ -321,7 +345,7 @@ class ExpensoUI {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
                         </svg>
                         <h3 class="empty-state-title">AI Insights Loading...</h3>
-                        <p class="empty-state-description">Click refresh to get smart predictions and recurring transaction suggestions</p>
+                        <p class="empty-state-description">Click refresh to get smart predictions and spending analysis</p>
                     </div>
                 </div>
             </div>
@@ -349,7 +373,7 @@ class ExpensoUI {
         const amount = parseFloat(transaction.amount) || 0;
         
         return `
-            <div class="transaction-card" onclick="expensoUI.showTransactionDetails('${transaction.id}')">
+            <div class="transaction-card" data-transaction-id="${transaction.id}" style="cursor: pointer;">
                 <div class="transaction-icon ${transaction.type}">
                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         ${isIncome ? 
@@ -525,11 +549,11 @@ class ExpensoUI {
                         <span class="bottom-nav-label">Transactions</span>
                     </a>
                     
-                    <a href="#" class="bottom-nav-item ${this.currentView === 'budget' ? 'active' : ''}" onclick="expensoUI.switchView('budget')">
+                    <a href="#" class="bottom-nav-item ${this.currentView === 'insights' ? 'active' : ''}" onclick="expensoUI.switchView('insights')">
                         <svg class="bottom-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
-                        <span class="bottom-nav-label">Budget</span>
+                        <span class="bottom-nav-label">Insights</span>
                     </a>
                     
                     <a href="#" class="bottom-nav-item ${this.currentView === 'reports' ? 'active' : ''}" onclick="expensoUI.switchView('reports')">
@@ -752,6 +776,11 @@ class ExpensoUI {
         // Load charts if switching to charts view
         if (view === 'charts') {
             setTimeout(() => this.loadCharts(), 100);
+        }
+        
+        // Load financial insights if switching to insights view
+        if (view === 'insights') {
+            setTimeout(() => this.loadFinancialInsights(), 100);
         }
     }
 
@@ -1025,16 +1054,17 @@ class ExpensoUI {
                     const response = await fetch(`/summary?month=${month}&year=${year}&user=${user}${cacheBustParam}`);
                     if (response.ok) {
                         const summaryData = await response.json();
-                        if (summaryData.success !== false && summaryData.data) {
-                            // Convert summary data to transaction format
+                        if (summaryData.success !== false && summaryData.data && summaryData.ids) {
+                            // Convert summary data to transaction format using actual row IDs
                             const userTransactions = summaryData.data.map((row, index) => ({
-                                id: `${user}-${index + 1}`,
+                                id: summaryData.ids[index], // Use actual Google Sheets row number
                                 type: row[4] === 'income' ? 'income' : 'expense', // Entry type is in column 4
                                 amount: Math.abs(parseFloat(row[3]) || 0), // Amount is in column 3
                                 description: row[2] || 'No description', // Description is in column 2
                                 category: row[1] || 'Other', // Category is in column 1
                                 date: row[0] || new Date().toISOString().split('T')[0], // Date is in column 0
-                                user: user
+                                user: user,
+                                isSaving: row[6] === 'YES' // Is saving flag
                             }));
                             console.log(`Loaded ${userTransactions.length} transactions for ${user}:`, userTransactions);
                             allTransactions = allTransactions.concat(userTransactions);
@@ -1103,10 +1133,26 @@ class ExpensoUI {
 
     async loadCategories() {
         try {
-            const response = await fetch('/categories');
-            if (response.ok) {
-                this.categories = await response.json();
-            }
+            // Calculate category statistics from current transactions
+            const categoryStats = {};
+            
+            this.transactions.forEach(transaction => {
+                if (transaction.type === 'expense' && transaction.category) {
+                    if (!categoryStats[transaction.category]) {
+                        categoryStats[transaction.category] = {
+                            category: transaction.category,
+                            totalAmount: 0,
+                            transactionCount: 0
+                        };
+                    }
+                    categoryStats[transaction.category].totalAmount += Math.abs(parseFloat(transaction.amount) || 0);
+                    categoryStats[transaction.category].transactionCount += 1;
+                }
+            });
+            
+            // Convert to array and sort by total amount descending
+            this.categories = Object.values(categoryStats).sort((a, b) => b.totalAmount - a.totalAmount);
+            console.log('Category statistics:', this.categories);
         } catch (error) {
             console.error('Error loading categories:', error);
         }
@@ -1142,35 +1188,49 @@ class ExpensoUI {
                 totalIncome: 0,
                 totalExpense: 0,
                 savings: 0,
-                monthlyBreakdown: []
+                monthlyBreakdown: {}
             };
             
             for (const user of users) {
                 const response = await fetch(`/yearly-summary?year=${this.selectedYear}&user=${user}`);
                 if (response.ok) {
                     const yearlyData = await response.json();
-                    if (yearlyData) {
+                    console.log(`Yearly data for ${user}:`, yearlyData); // Debug log
+                    if (yearlyData && yearlyData.success !== false) {
                         combinedData.totalIncome += yearlyData.totalIncome || 0;
                         combinedData.totalExpense += yearlyData.totalExpense || 0;
-                        combinedData.savings += yearlyData.savings || 0;
+                        combinedData.savings += yearlyData.totalSavings || 0;
                         
-                        // Merge monthly breakdown
-                        if (yearlyData.monthlyBreakdown) {
-                            yearlyData.monthlyBreakdown.forEach(monthData => {
-                                const existingMonth = combinedData.monthlyBreakdown.find(m => m.month === monthData.month);
-                                if (existingMonth) {
-                                    existingMonth.income += monthData.income || 0;
-                                    existingMonth.expense += monthData.expense || 0;
-                                } else {
-                                    combinedData.monthlyBreakdown.push({ ...monthData });
+                        // Merge monthly breakdown - it's an object, not an array
+                        if (yearlyData.monthlyBreakdown && typeof yearlyData.monthlyBreakdown === 'object') {
+                            Object.keys(yearlyData.monthlyBreakdown).forEach(monthKey => {
+                                const monthData = yearlyData.monthlyBreakdown[monthKey];
+                                if (!combinedData.monthlyBreakdown[monthKey]) {
+                                    combinedData.monthlyBreakdown[monthKey] = {
+                                        month: monthKey,
+                                        income: 0,
+                                        expense: 0,
+                                        savings: 0,
+                                        net: 0
+                                    };
                                 }
+                                combinedData.monthlyBreakdown[monthKey].income += monthData.income || 0;
+                                combinedData.monthlyBreakdown[monthKey].expense += monthData.expense || 0;
+                                combinedData.monthlyBreakdown[monthKey].savings += monthData.savings || 0;
+                                combinedData.monthlyBreakdown[monthKey].net += monthData.net || 0;
                             });
                         }
                     }
+                } else {
+                    console.error(`Failed to load yearly data for ${user}:`, await response.text());
                 }
             }
             
+            // Convert monthlyBreakdown object to array for easier rendering
+            combinedData.monthlyBreakdownArray = Object.values(combinedData.monthlyBreakdown);
+            
             this.yearlyData = combinedData;
+            console.log('Combined yearly data:', this.yearlyData);
         } catch (error) {
             console.error('Error loading yearly data:', error);
         }
@@ -1184,35 +1244,56 @@ class ExpensoUI {
                 totalSavings: 0,
                 totalInvestments: 0,
                 netWorth: 0,
-                monthlyGrowth: []
+                monthlyNetWorth: {}
             };
             
             for (const user of users) {
                 const response = await fetch(`/net-worth?user=${user}`);
                 if (response.ok) {
                     const netWorth = await response.json();
-                    if (netWorth) {
+                    console.log(`Net worth for ${user}:`, netWorth); // Debug log
+                    if (netWorth && netWorth.success !== false) {
                         combinedNetWorth.totalSavings += netWorth.totalSavings || 0;
                         combinedNetWorth.totalInvestments += netWorth.totalInvestments || 0;
                         combinedNetWorth.netWorth += netWorth.netWorth || 0;
                         
-                        // Merge monthly growth data
-                        if (netWorth.monthlyGrowth) {
-                            netWorth.monthlyGrowth.forEach(monthData => {
-                                const existingMonth = combinedNetWorth.monthlyGrowth.find(m => m.month === monthData.month);
-                                if (existingMonth) {
-                                    existingMonth.growth += monthData.growth || 0;
-                                    existingMonth.netWorth += monthData.netWorth || 0;
-                                } else {
-                                    combinedNetWorth.monthlyGrowth.push({ ...monthData });
+                        // Merge monthly net worth data - it's an object, not an array
+                        if (netWorth.monthlyNetWorth && typeof netWorth.monthlyNetWorth === 'object') {
+                            Object.keys(netWorth.monthlyNetWorth).forEach(monthKey => {
+                                const monthData = netWorth.monthlyNetWorth[monthKey];
+                                if (!combinedNetWorth.monthlyNetWorth[monthKey]) {
+                                    combinedNetWorth.monthlyNetWorth[monthKey] = {
+                                        month: monthKey,
+                                        savings: 0,
+                                        investments: 0,
+                                        netWorth: 0,
+                                        growth: 0
+                                    };
                                 }
+                                combinedNetWorth.monthlyNetWorth[monthKey].savings += monthData.savings || 0;
+                                combinedNetWorth.monthlyNetWorth[monthKey].investments += monthData.investments || 0;
+                                combinedNetWorth.monthlyNetWorth[monthKey].netWorth += (monthData.savings || 0) + (monthData.investments || 0);
                             });
                         }
                     }
+                } else {
+                    console.error(`Failed to load net worth for ${user}:`, await response.text());
                 }
             }
             
+            // Convert monthlyNetWorth object to array and calculate growth
+            const monthlyArray = Object.values(combinedNetWorth.monthlyNetWorth);
+            monthlyArray.forEach((month, index) => {
+                if (index > 0) {
+                    month.growth = month.netWorth - monthlyArray[index - 1].netWorth;
+                } else {
+                    month.growth = month.netWorth;
+                }
+            });
+            combinedNetWorth.monthlyGrowth = monthlyArray;
+            
             this.netWorth = combinedNetWorth;
+            console.log('Combined net worth:', this.netWorth);
         } catch (error) {
             console.error('Error loading net worth:', error);
         }
@@ -1254,31 +1335,74 @@ class ExpensoUI {
             }
         });
 
-        // Pull to refresh implementation
+        // Pull to refresh implementation - STRICT VERSION
         let startY = 0;
         let currentY = 0;
         let pullDistance = 0;
         let isPulling = false;
-        let refreshThreshold = 80; // minimum pull distance for refresh
+        let refreshThreshold = 150;
+        let isAtAbsoluteTop = false;
+        let hasStartedPulling = false;
+        let stayedAtTopThroughout = true; // Track if user stayed at top throughout gesture
         
-        const mainContent = document.querySelector('.main-content') || document.body;
+        // Helper function to check if truly at top - check all possible scroll containers
+        function isAtTop() {
+            const windowScroll = window.pageYOffset || window.scrollY || 0;
+            const documentScroll = document.documentElement.scrollTop || 0;
+            const bodyScroll = document.body.scrollTop || 0;
+            
+            const scrollTop = Math.max(windowScroll, documentScroll, bodyScroll);
+            return scrollTop === 0;
+        }
         
         // Touch start
         document.addEventListener('touchstart', (e) => {
-            if (mainContent.scrollTop <= 0) {
+            // Reset all states
+            isPulling = false;
+            hasStartedPulling = false;
+            stayedAtTopThroughout = true;
+            isAtAbsoluteTop = isAtTop();
+            
+            if (isAtAbsoluteTop) {
                 startY = e.touches[0].clientY;
-                isPulling = true;
             }
         }, { passive: true });
         
         // Touch move
         document.addEventListener('touchmove', (e) => {
-            if (!isPulling) return;
+            // Continuously check if we're at top
+            const currentlyAtTop = isAtTop();
+            
+            if (!currentlyAtTop) {
+                stayedAtTopThroughout = false;
+            }
+            
+            // Only proceed if we started at top AND stayed at top
+            if (!isAtAbsoluteTop || !stayedAtTopThroughout || !currentlyAtTop) {
+                // Clean up any existing indicator
+                if (!hasStartedPulling) {
+                    const pullIndicator = document.querySelector('.pull-refresh-indicator');
+                    if (pullIndicator) {
+                        pullIndicator.remove();
+                    }
+                }
+                return;
+            }
             
             currentY = e.touches[0].clientY;
             pullDistance = currentY - startY;
             
-            if (pullDistance > 0 && mainContent.scrollTop <= 0) {
+            // Only start pulling if:
+            // 1. We started at absolute top
+            // 2. We stayed at top throughout
+            // 3. User is pulling DOWN significantly (more than 60px)
+            // 4. We're still at top
+            if (pullDistance > 60 && currentlyAtTop && stayedAtTopThroughout) {
+                if (!hasStartedPulling) {
+                    hasStartedPulling = true;
+                }
+                
+                isPulling = true;
                 e.preventDefault();
                 
                 // Create or update pull indicator
@@ -1289,27 +1413,28 @@ class ExpensoUI {
                     pullIndicator.innerHTML = `
                         <div class="pull-refresh-content">
                             <div class="pull-refresh-spinner"></div>
-                            <span class="pull-refresh-text">Pull to refresh & reset to current month</span>
+                            <span class="pull-refresh-text">Pull down more to refresh & reset</span>
                         </div>
                     `;
                     document.body.insertBefore(pullIndicator, document.body.firstChild);
                 }
                 
                 // Update indicator based on pull distance
-                const progress = Math.min(pullDistance / refreshThreshold, 1);
-                pullIndicator.style.transform = `translateY(${Math.min(pullDistance, refreshThreshold)}px)`;
+                const adjustedDistance = pullDistance - 60; // subtract initial threshold
+                const progress = Math.min(adjustedDistance / (refreshThreshold - 60), 1);
+                pullIndicator.style.transform = `translateY(${Math.min(adjustedDistance, refreshThreshold - 60)}px)`;
                 pullIndicator.style.opacity = progress;
                 
                 const spinner = pullIndicator.querySelector('.pull-refresh-spinner');
                 const text = pullIndicator.querySelector('.pull-refresh-text');
                 
-                if (pullDistance >= refreshThreshold) {
+                if (adjustedDistance >= (refreshThreshold - 60)) {
                     spinner.style.transform = 'rotate(180deg)';
-                    text.textContent = 'Release to refresh & reset';
+                    text.textContent = 'Release to refresh & reset to current month';
                     pullIndicator.classList.add('ready');
                 } else {
                     spinner.style.transform = `rotate(${progress * 180}deg)`;
-                    text.textContent = 'Pull to refresh & reset to current month';
+                    text.textContent = 'Pull down more to refresh & reset';
                     pullIndicator.classList.remove('ready');
                 }
             }
@@ -1317,27 +1442,74 @@ class ExpensoUI {
         
         // Touch end
         document.addEventListener('touchend', () => {
-            if (!isPulling) return;
-            
             const pullIndicator = document.querySelector('.pull-refresh-indicator');
             
-            if (pullDistance >= refreshThreshold) {
-                // Trigger refresh
+            // Only trigger refresh if ALL conditions are met:
+            // 1. We were pulling
+            // 2. We started pulling
+            // 3. We stayed at top throughout the entire gesture
+            // 4. We're still at top now
+            // 5. We pulled far enough
+            const adjustedDistance = pullDistance - 60;
+            const shouldRefresh = isPulling && hasStartedPulling && stayedAtTopThroughout && 
+                                isAtTop() && adjustedDistance >= (refreshThreshold - 60);
+            
+            if (shouldRefresh) {
+                console.log('All conditions met - triggering refresh');
                 this.performPullRefresh();
+            } else {
+                console.log('Refresh cancelled - conditions not met:', {
+                    isPulling,
+                    hasStartedPulling,
+                    stayedAtTopThroughout,
+                    currentlyAtTop: isAtTop(),
+                    pullDistance: adjustedDistance,
+                    threshold: refreshThreshold - 60
+                });
             }
             
-            // Reset
+            // Reset and cleanup
             if (pullIndicator) {
                 pullIndicator.style.transform = 'translateY(-100%)';
                 pullIndicator.style.opacity = '0';
                 setTimeout(() => pullIndicator?.remove(), 300);
             }
             
+            // Reset all states
             isPulling = false;
+            hasStartedPulling = false;
+            stayedAtTopThroughout = true;
             pullDistance = 0;
             startY = 0;
             currentY = 0;
+            isAtAbsoluteTop = false;
         }, { passive: true });
+    }
+
+    toggleIncomeVisibility() {
+        this.incomeVisible = !this.incomeVisible;
+        this.render(); // Re-render to update display
+    }
+
+    formatIncomeAmount(amount) {
+        if (this.incomeVisible) {
+            return this.formatAmount(amount);
+        }
+        return '••••••';
+    }
+
+    setUserFilter(user) {
+        this.selectedUserFilter = user;
+        this.render(); // Re-render to update transaction list
+    }
+
+    getFilteredTransactions() {
+        if (this.selectedUserFilter === 'all') {
+            return this.transactions;
+        }
+        return this.transactions.filter(transaction => 
+            transaction.user?.toLowerCase() === this.selectedUserFilter.toLowerCase()
+        );
     }
 
     async performPullRefresh() {
@@ -1549,6 +1721,8 @@ class ExpensoUI {
         if (!ctx) return;
 
         const monthlyData = this.getMonthlyChartData();
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim();
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
         
         new Chart(ctx, {
             type: 'line',
@@ -1580,7 +1754,8 @@ class ExpensoUI {
                         position: 'bottom',
                         labels: {
                             usePointStyle: true,
-                            padding: 20
+                            padding: 20,
+                            color: textColor
                         }
                     }
                 },
@@ -1588,9 +1763,10 @@ class ExpensoUI {
                     y: {
                         beginAtZero: true,
                         grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
+                            color: gridColor || 'rgba(0, 0, 0, 0.05)'
                         },
                         ticks: {
+                            color: textColor,
                             callback: function(value) {
                                 return '₹' + value.toLocaleString();
                             }
@@ -1599,6 +1775,9 @@ class ExpensoUI {
                     x: {
                         grid: {
                             display: false
+                        },
+                        ticks: {
+                            color: textColor
                         }
                     }
                 }
@@ -1611,6 +1790,7 @@ class ExpensoUI {
         if (!ctx) return;
 
         const categoryData = this.getCategoryChartData();
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim();
         
         new Chart(ctx, {
             type: 'doughnut',
@@ -1644,6 +1824,7 @@ class ExpensoUI {
                         labels: {
                             usePointStyle: true,
                             padding: 15,
+                            color: textColor,
                             generateLabels: function(chart) {
                                 const data = chart.data;
                                 return data.labels.map((label, i) => ({
@@ -1677,6 +1858,8 @@ class ExpensoUI {
         if (!ctx) return;
 
         const incomeExpenseData = this.getIncomeExpenseChartData();
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim();
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
         
         new Chart(ctx, {
             type: 'bar',
@@ -1704,7 +1887,8 @@ class ExpensoUI {
                         position: 'bottom',
                         labels: {
                             usePointStyle: true,
-                            padding: 20
+                            padding: 20,
+                            color: textColor
                         }
                     }
                 },
@@ -1712,9 +1896,10 @@ class ExpensoUI {
                     y: {
                         beginAtZero: true,
                         grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
+                            color: gridColor || 'rgba(0, 0, 0, 0.05)'
                         },
                         ticks: {
+                            color: textColor,
                             callback: function(value) {
                                 return '₹' + value.toLocaleString();
                             }
@@ -1723,6 +1908,9 @@ class ExpensoUI {
                     x: {
                         grid: {
                             display: false
+                        },
+                        ticks: {
+                            color: textColor
                         }
                     }
                 }
@@ -1892,25 +2080,110 @@ class ExpensoUI {
     
     async refreshSmartInsights() {
         try {
-            this.showNotification('Getting smart insights...', 'info');
-            const response = await fetch('/get-smart-insights');
+            this.showNotification('Analyzing your transactions...', 'info');
             
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success) {
-                    this.smartInsights = result.insights;
-                    this.updateSmartInsightsDisplay();
-                    this.showNotification('Smart insights updated!', 'success');
-                } else {
-                    throw new Error(result.message);
-                }
-            } else {
-                throw new Error('Failed to get insights');
-            }
+            // Calculate insights from existing transaction data
+            const insights = {
+                totalTransactions: this.transactions.length,
+                averageExpense: this.balance.expense / (this.transactions.filter(t => t.type === 'expense').length || 1),
+                userSplit: this.userSplit,
+                topCategories: this.getTopCategories(3),
+                monthlyPrediction: this.predictMonthlyExpense(),
+                savingsRate: this.balance.income > 0 ? ((this.balance.income - this.balance.expense) / this.balance.income * 100).toFixed(1) : 0
+            };
+            
+            this.smartInsights = insights;
+            this.updateSmartInsightsDisplay();
+            
+            // Also update recurring transactions
+            this.detectRecurringTransactions();
+            
+            this.showNotification('Smart insights updated!', 'success');
         } catch (error) {
             console.error('Error getting smart insights:', error);
-            this.showNotification('Failed to get insights: ' + error.message, 'error');
+            this.showNotification('Failed to analyze: ' + error.message, 'error');
         }
+    }
+    
+    getTopCategories(limit = 5) {
+        const categoryTotals = {};
+        this.transactions.filter(t => t.type === 'expense').forEach(t => {
+            categoryTotals[t.category] = (categoryTotals[t.category] || 0) + Math.abs(parseFloat(t.amount) || 0);
+        });
+        
+        return Object.entries(categoryTotals)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, limit)
+            .map(([category, amount]) => ({ category, amount }));
+    }
+    
+    detectRecurringTransactions() {
+        // Group transactions by description and category
+        const transactionGroups = {};
+        
+        this.transactions.forEach(t => {
+            const key = `${t.description}-${t.category}`.toLowerCase();
+            if (!transactionGroups[key]) {
+                transactionGroups[key] = [];
+            }
+            transactionGroups[key].push(t);
+        });
+        
+        // Find patterns that appear multiple times
+        const recurring = [];
+        Object.entries(transactionGroups).forEach(([key, transactions]) => {
+            if (transactions.length >= 2) {
+                const avgAmount = transactions.reduce((sum, t) => sum + Math.abs(parseFloat(t.amount) || 0), 0) / transactions.length;
+                recurring.push({
+                    description: transactions[0].description,
+                    category: transactions[0].category,
+                    type: transactions[0].type,
+                    frequency: transactions.length,
+                    avgAmount: avgAmount,
+                    lastDate: transactions[transactions.length - 1].date
+                });
+            }
+        });
+        
+        // Update the recurring transactions display
+        this.updateRecurringTransactionsDisplay(recurring);
+    }
+    
+    updateRecurringTransactionsDisplay(recurring) {
+        const container = document.getElementById('recurringTransactionsContent');
+        if (!container) return;
+        
+        if (recurring.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="empty-state-title">No Recurring Patterns Found</h3>
+                    <p class="empty-state-description">We haven't detected any recurring transactions yet</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+                ${recurring.map(r => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary);">${r.description}</div>
+                            <div style="font-size: 14px; color: var(--text-secondary);">${r.category} • Appears ${r.frequency} times</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 600; color: ${r.type === 'income' ? 'var(--success)' : 'var(--danger)'};">
+                                ₹${this.formatAmount(r.avgAmount)}
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">avg amount</div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
     }
     
     updateCategoriesFromAnalysis(categories) {
@@ -1924,21 +2197,45 @@ class ExpensoUI {
         if (!container || !this.smartInsights) return;
         
         const insights = this.smartInsights;
+        const prediction = this.predictMonthlyExpense();
+        const dailyAvg = this.balance.expense / new Date().getDate();
+        const savingsRate = insights.savingsRate || 0;
+        
         container.innerHTML = `
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg);">
                 <div class="insight-card">
-                    <h4>Monthly Prediction</h4>
-                    <p>Based on current trends, you're likely to spend <strong>₹${this.formatAmount(this.predictMonthlyExpense())}</strong> this month.</p>
+                    <h4 style="color: var(--text-primary); margin-bottom: var(--space-sm);">Monthly Prediction</h4>
+                    <p style="color: var(--text-secondary); font-size: 14px;">Based on current trends, you're likely to spend <strong style="color: var(--text-primary);">₹${this.formatAmount(prediction)}</strong> this month.</p>
                 </div>
                 
                 <div class="insight-card">
-                    <h4>Spending Pattern</h4>
-                    <p>Your average daily expense is <strong>₹${this.formatAmount(this.balance.expense / new Date().getDate())}</strong>.</p>
+                    <h4 style="color: var(--text-primary); margin-bottom: var(--space-sm);">Spending Pattern</h4>
+                    <p style="color: var(--text-secondary); font-size: 14px;">Your average daily expense is <strong style="color: var(--text-primary);">₹${this.formatAmount(dailyAvg)}</strong>.</p>
                 </div>
                 
                 <div class="insight-card">
-                    <h4>User Comparison</h4>
-                    <p>Ashi: ₹${this.formatAmount(insights.userSplit.ashi.expense)} | Sanju: ₹${this.formatAmount(insights.userSplit.sanju.expense)}</p>
+                    <h4 style="color: var(--text-primary); margin-bottom: var(--space-sm);">User Comparison</h4>
+                    <p style="color: var(--text-secondary); font-size: 14px;">
+                        <span style="color: var(--text-primary);"><strong>Ashi:</strong> ₹${this.formatAmount(insights.userSplit?.ashi?.expense || 0)}</span><br>
+                        <span style="color: var(--text-primary);"><strong>Sanju:</strong> ₹${this.formatAmount(insights.userSplit?.sanju?.expense || 0)}</span>
+                    </p>
+                </div>
+                
+                <div class="insight-card">
+                    <h4 style="color: var(--text-primary); margin-bottom: var(--space-sm);">Savings Rate</h4>
+                    <p style="color: var(--text-secondary); font-size: 14px;">You're saving <strong style="color: ${savingsRate > 20 ? 'var(--success)' : 'var(--warning)'};">${savingsRate}%</strong> of your income.</p>
+                </div>
+                
+                <div class="insight-card">
+                    <h4 style="color: var(--text-primary); margin-bottom: var(--space-sm);">Top Categories</h4>
+                    <div style="display: flex; flex-direction: column; gap: var(--space-xs); color: var(--text-secondary); font-size: 14px;">
+                        ${insights.topCategories?.slice(0, 3).map(cat => 
+                            `<div style="display: flex; justify-content: space-between;">
+                                <span>${cat.category}</span>
+                                <strong style="color: var(--text-primary);">₹${this.formatAmount(cat.amount)}</strong>
+                            </div>`
+                        ).join('') || '<p>No categories yet</p>'}
+                    </div>
                 </div>
             </div>
         `;
@@ -1949,6 +2246,275 @@ class ExpensoUI {
         const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
         const dailyAverage = this.balance.expense / currentDay;
         return dailyAverage * daysInMonth;
+    }
+
+    // Financial Insights & Savings Optimization
+    async loadFinancialInsights() {
+        try {
+            const container = document.getElementById('financialInsightsContainer');
+            if (!container) return;
+
+            // Show loading state
+            container.innerHTML = `
+                <div class="loading-state" style="text-align: center; padding: var(--space-xxl);">
+                    <svg class="loading-spinner" style="width: 48px; height: 48px; animation: spin 1s linear infinite; color: var(--primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <h3 style="margin-top: var(--space-lg); color: var(--text-primary);">Analyzing Your Financial Data...</h3>
+                </div>
+            `;
+
+            // Fetch insights from API
+            const response = await fetch('/api/financial-insights');
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to load insights');
+            }
+
+            // Render the insights
+            this.renderFinancialInsightsUI(data);
+
+        } catch (error) {
+            console.error('Error loading financial insights:', error);
+            const container = document.getElementById('financialInsightsContainer');
+            if (container) {
+                container.innerHTML = `
+                    <div class="error-state" style="text-align: center; padding: var(--space-xxl);">
+                        <svg style="width: 48px; height: 48px; color: var(--danger);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <h3 style="margin-top: var(--space-lg); color: var(--text-primary);">Failed to Load Insights</h3>
+                        <p style="color: var(--text-secondary); margin-top: var(--space-sm);">${error.message}</p>
+                        <button class="btn btn-primary" style="margin-top: var(--space-lg);" onclick="expensoUI.loadFinancialInsights()">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    renderFinancialInsightsUI(data) {
+        const container = document.getElementById('financialInsightsContainer');
+        if (!container) return;
+
+        const { summary, categoryInsights, trendHighlights, behavioralInsights, actionableSuggestions, financialHealthScore } = data;
+
+        container.innerHTML = `
+            <!-- Financial Health Score -->
+            <div class="card mb-lg" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);">
+                <div class="card-body" style="text-align: center; padding: var(--space-xxl);">
+                    <h3 style="color: white; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: var(--space-md);">Financial Health Score</h3>
+                    <div style="font-size: 64px; font-weight: 700; color: white; margin-bottom: var(--space-sm);">${financialHealthScore.score}</div>
+                    <div style="font-size: 18px; color: rgba(255,255,255,0.9); margin-bottom: var(--space-lg);">${financialHealthScore.rating}</div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-md); margin-top: var(--space-xl);">
+                        <div style="background: rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: var(--space-md);">
+                            <div style="color: rgba(255,255,255,0.7); font-size: 12px;">Savings</div>
+                            <div style="color: white; font-size: 20px; font-weight: 600;">${financialHealthScore.breakdown.savingsRate}/40</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: var(--space-md);">
+                            <div style="color: rgba(255,255,255,0.7); font-size: 12px;">Balance</div>
+                            <div style="color: white; font-size: 20px; font-weight: 600;">${financialHealthScore.breakdown.spendingBalance}/30</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: var(--space-md);">
+                            <div style="color: rgba(255,255,255,0.7); font-size: 12px;">Consistency</div>
+                            <div style="color: white; font-size: 20px; font-weight: 600;">${financialHealthScore.breakdown.consistency}/20</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: var(--space-md);">
+                            <div style="color: rgba(255,255,255,0.7); font-size: 12px;">Control</div>
+                            <div style="color: white; font-size: 20px; font-weight: 600;">${financialHealthScore.breakdown.anomalyControl}/10</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
+                <div class="card">
+                    <div class="card-body">
+                        <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: var(--space-xs);">Current Month Income</div>
+                        <div style="font-size: 28px; font-weight: 700; color: var(--success); margin-bottom: var(--space-sm);">₹${this.formatAmount(summary.currentMonth.income)}</div>
+                        <div style="color: var(--text-secondary); font-size: 12px;">
+                            ${trendHighlights.incomeGrowth > 0 ? '↑' : '↓'} ${Math.abs(trendHighlights.incomeGrowth)}% from last month
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: var(--space-xs);">Current Month Expense</div>
+                        <div style="font-size: 28px; font-weight: 700; color: var(--danger); margin-bottom: var(--space-sm);">₹${this.formatAmount(summary.currentMonth.expense)}</div>
+                        <div style="color: var(--text-secondary); font-size: 12px;">
+                            ${trendHighlights.expenseGrowth > 0 ? '↑' : '↓'} ${Math.abs(trendHighlights.expenseGrowth)}% from last month
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: var(--space-xs);">Current Savings</div>
+                        <div style="font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: var(--space-sm);">₹${this.formatAmount(summary.currentMonth.savings)}</div>
+                        <div style="color: var(--text-secondary); font-size: 12px;">
+                            ${summary.currentMonth.savingsRate}% savings rate
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: var(--space-xs);">3-Month Average</div>
+                        <div style="font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-sm);">₹${this.formatAmount(summary.last3MonthsAverage.avgSavings)}</div>
+                        <div style="color: var(--text-secondary); font-size: 12px;">
+                            ${summary.last3MonthsAverage.avgSavingsRate}% avg savings rate
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 50/30/20 Rule Visualization -->
+            <div class="card mb-lg">
+                <div class="card-header">
+                    <h3 class="card-title">Spending Balance (50/30/20 Rule)</h3>
+                </div>
+                <div class="card-body">
+                    <div style="margin-bottom: var(--space-lg);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-xs);">
+                            <span style="color: var(--text-secondary);">Needs (Target: 50%)</span>
+                            <span style="color: var(--text-primary); font-weight: 600;">${categoryInsights.needsVsWants.needsPercentage}%</span>
+                        </div>
+                        <div style="background: var(--bg-secondary); border-radius: 8px; height: 12px; overflow: hidden;">
+                            <div style="background: var(--success); height: 100%; width: ${Math.min(categoryInsights.needsVsWants.needsPercentage, 100)}%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: var(--space-lg);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-xs);">
+                            <span style="color: var(--text-secondary);">Wants (Target: 30%)</span>
+                            <span style="color: var(--text-primary); font-weight: 600;">${categoryInsights.needsVsWants.wantsPercentage}%</span>
+                        </div>
+                        <div style="background: var(--bg-secondary); border-radius: 8px; height: 12px; overflow: hidden;">
+                            <div style="background: var(--warning); height: 100%; width: ${Math.min(categoryInsights.needsVsWants.wantsPercentage, 100)}%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-xs);">
+                            <span style="color: var(--text-secondary);">Savings (Target: 20%)</span>
+                            <span style="color: var(--text-primary); font-weight: 600;">${categoryInsights.needsVsWants.savingsPercentage}%</span>
+                        </div>
+                        <div style="background: var(--bg-secondary); border-radius: 8px; height: 12px; overflow: hidden;">
+                            <div style="background: var(--primary); height: 100%; width: ${Math.min(categoryInsights.needsVsWants.savingsPercentage, 100)}%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Categories -->
+            <div class="card mb-lg">
+                <div class="card-header">
+                    <h3 class="card-title">Top Spending Categories</h3>
+                </div>
+                <div class="card-body">
+                    ${categoryInsights.topCategories.map((cat, index) => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md); margin-bottom: var(--space-sm);">
+                            <div>
+                                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">#${index + 1} ${cat.category}</div>
+                                <div style="font-size: 13px; color: var(--text-secondary);">
+                                    ${cat.count} transactions • ${cat.percentageOfIncome}% of income
+                                    ${cat.monthOverMonthChange ? ` • ${cat.monthOverMonthChange > 0 ? '↑' : '↓'} ${Math.abs(cat.monthOverMonthChange)}% MoM` : ''}
+                                </div>
+                            </div>
+                            <div style="font-size: 20px; font-weight: 700; color: var(--danger);">₹${this.formatAmount(cat.amount)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- Behavioral Insights -->
+            <div class="card mb-lg">
+                <div class="card-header">
+                    <h3 class="card-title">Expert Insights</h3>
+                    <span style="font-size: 12px; color: var(--text-secondary);">Based on principles from Ramit Sethi, Dave Ramsey, and more</span>
+                </div>
+                <div class="card-body">
+                    ${behavioralInsights.map(insight => {
+                        const icons = {
+                            positive: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>',
+                            warning: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>',
+                            critical: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>',
+                            info: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+                        };
+                        const colors = {
+                            positive: 'var(--success)',
+                            warning: 'var(--warning)',
+                            critical: 'var(--danger)',
+                            info: 'var(--primary)'
+                        };
+                        return `
+                            <div style="display: flex; gap: var(--space-md); padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md); margin-bottom: var(--space-sm); border-left: 4px solid ${colors[insight.type]};">
+                                <svg style="width: 24px; height: 24px; flex-shrink: 0; color: ${colors[insight.type]};" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    ${icons[insight.type]}
+                                </svg>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${insight.category}</div>
+                                    <div style="color: var(--text-secondary); line-height: 1.5;">${insight.message}</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
+            <!-- Actionable Suggestions -->
+            <div class="card mb-lg">
+                <div class="card-header">
+                    <h3 class="card-title">Action Plan</h3>
+                    <span style="font-size: 12px; color: var(--text-secondary);">Prioritized steps to improve your financial health</span>
+                </div>
+                <div class="card-body">
+                    ${actionableSuggestions.map((suggestion, index) => `
+                        <div style="display: flex; gap: var(--space-md); padding: var(--space-lg); background: var(--bg-secondary); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
+                            <div style="flex-shrink: 0; width: 32px; height: 32px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700;">
+                                ${index + 1}
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-xs);">
+                                    <h4 style="font-weight: 600; color: var(--text-primary); margin: 0;">${suggestion.action}</h4>
+                                    <span style="font-size: 12px; padding: 4px 8px; background: ${suggestion.impact === 'high' ? 'var(--danger)' : suggestion.impact === 'medium' ? 'var(--warning)' : 'var(--primary)'}; color: white; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;">${suggestion.impact} impact</span>
+                                </div>
+                                <p style="color: var(--text-secondary); margin: 0; line-height: 1.5;">${suggestion.description}</p>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- Period Summary -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Analysis Period</h3>
+                </div>
+                <div class="card-body">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-md);">
+                        <div>
+                            <div style="color: var(--text-secondary); font-size: 13px; margin-bottom: 4px;">Current Month</div>
+                            <div style="color: var(--text-primary); font-weight: 600;">${data.period.current}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-secondary); font-size: 13px; margin-bottom: 4px;">Last Month</div>
+                            <div style="color: var(--text-primary); font-weight: 600;">${data.period.lastMonth}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-secondary); font-size: 13px; margin-bottom: 4px;">3-Month Period</div>
+                            <div style="color: var(--text-primary); font-weight: 600;">${data.period.last3Months}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-secondary); font-size: 13px; margin-bottom: 4px;">Transactions Analyzed</div>
+                            <div style="color: var(--text-primary); font-weight: 600;">${summary.currentMonth.transactions}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     // Utility methods
@@ -2033,10 +2599,22 @@ class ExpensoUI {
     }
 
     bindEvents() {
+        // Only bind once
+        if (this.eventsBound) return;
+        this.eventsBound = true;
+        
         // Handle modal clicks
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal-overlay')) {
                 e.target.classList.add('hidden');
+            }
+            
+            // Handle transaction card clicks using event delegation
+            const transactionCard = e.target.closest('.transaction-card');
+            if (transactionCard && transactionCard.hasAttribute('data-transaction-id')) {
+                const transactionId = transactionCard.getAttribute('data-transaction-id');
+                console.log('Transaction clicked:', transactionId);
+                this.showTransactionDetails(transactionId);
             }
         });
         
@@ -2084,17 +2662,17 @@ class ExpensoUI {
                             </div>
                         </div>
                         <div style="margin-top: 16px;">
-                            <h4 style="margin-bottom: 12px;">Monthly Breakdown</h4>
-                            ${this.yearlyData.monthlyBreakdown ? this.yearlyData.monthlyBreakdown.map(month => `
+                            <h4 style="margin-bottom: 12px; color: var(--text-primary);">Monthly Breakdown</h4>
+                            ${this.yearlyData.monthlyBreakdownArray && this.yearlyData.monthlyBreakdownArray.length > 0 ? this.yearlyData.monthlyBreakdownArray.map(month => `
                                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--bg-secondary);">
-                                    <span style="font-weight: 500;">${month.month}</span>
+                                    <span style="font-weight: 500; color: var(--text-primary);">${month.month}</span>
                                     <div style="text-align: right;">
                                         <div style="color: var(--success); font-size: 14px;">+₹${this.formatAmount(month.income)}</div>
                                         <div style="color: var(--danger); font-size: 14px;">-₹${this.formatAmount(month.expense)}</div>
-                                        <div style="font-weight: 600;">₹${this.formatAmount(month.income - month.expense)}</div>
+                                        <div style="font-weight: 600; color: var(--text-primary);">₹${this.formatAmount(month.net)}</div>
                                     </div>
                                 </div>
-                            `).join('') : ''}
+                            `).join('') : '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">No monthly data available</div>'}
                         </div>
                     ` : `
                         <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
@@ -2149,10 +2727,10 @@ class ExpensoUI {
                             </div>
                         </div>
                         <div style="margin-top: 16px;">
-                            <h4 style="margin-bottom: 12px;">Monthly Net Worth Growth</h4>
-                            ${this.netWorth.monthlyGrowth ? this.netWorth.monthlyGrowth.map(month => `
+                            <h4 style="margin-bottom: 12px; color: var(--text-primary);">Monthly Net Worth Growth</h4>
+                            ${this.netWorth.monthlyGrowth && this.netWorth.monthlyGrowth.length > 0 ? this.netWorth.monthlyGrowth.map(month => `
                                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--bg-secondary);">
-                                    <span style="font-weight: 500;">${month.month}</span>
+                                    <span style="font-weight: 500; color: var(--text-primary);">${month.month}</span>
                                     <div style="text-align: right;">
                                         <div style="font-weight: 600; color: ${month.growth >= 0 ? 'var(--success)' : 'var(--danger)'};">
                                             ${month.growth >= 0 ? '+' : ''}₹${this.formatAmount(Math.abs(month.growth))}
@@ -2160,7 +2738,7 @@ class ExpensoUI {
                                         <div style="font-size: 14px; color: var(--text-secondary);">₹${this.formatAmount(month.netWorth)}</div>
                                     </div>
                                 </div>
-                            `).join('') : ''}
+                            `).join('') : '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">No growth data available</div>'}
                         </div>
                     ` : `
                         <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
@@ -2180,12 +2758,12 @@ class ExpensoUI {
                         ${this.categories.map(category => `
                             <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--bg-secondary);">
                                 <div>
-                                    <span style="font-weight: 500;">${category.category}</span>
+                                    <span style="font-weight: 500; color: var(--text-primary);">${category.category}</span>
                                     <div style="font-size: 14px; color: var(--text-secondary);">${category.transactionCount} transactions</div>
                                 </div>
                                 <div style="text-align: right;">
                                     <div style="font-weight: 600; color: var(--danger);">₹${this.formatAmount(category.totalAmount)}</div>
-                                    <div style="font-size: 14px; color: var(--text-secondary);">${((category.totalAmount / this.balance.expense) * 100).toFixed(1)}%</div>
+                                    <div style="font-size: 14px; color: var(--text-secondary);">${this.balance.expense > 0 ? ((category.totalAmount / this.balance.expense) * 100).toFixed(1) : '0.0'}%</div>
                                 </div>
                             </div>
                         `).join('')}
@@ -2211,9 +2789,9 @@ class ExpensoUI {
 }
 
 // Initialize the app
-let expensoUI;
+window.expensoUI = null;
 document.addEventListener('DOMContentLoaded', () => {
-    expensoUI = new ExpensoUI();
+    window.expensoUI = new ExpensoUI();
 });
 
 // Add slide animations to CSS

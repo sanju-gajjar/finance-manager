@@ -4,6 +4,7 @@ const path = require('path');
 const { google } = require('googleapis');
 const cors = require('cors');
 require('dotenv').config();
+const { generateFinancialInsights } = require('./services/financialInsightsService');
 
 const app = express();
 const port = process.env.PORT || 3002;
@@ -436,6 +437,75 @@ app.get('/get-smart-insights', async (req, res) => {
     }
 });
 
+// Financial Insights & Savings Optimization endpoint
+app.get('/api/financial-insights', async (req, res) => {
+    try {
+        const { user } = req.query;
+        
+        if (!sheets || !SPREADSHEET_ID) {
+            return res.status(500).json({ success: false, message: 'Google Sheets not available' });
+        }
+        
+        // Get all transactions from the last 4 months
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: 'Expenses!A2:I', // All data with savings column
+        });
+        
+        const rows = response.data.values || [];
+        if (!rows.length) {
+            return res.json({ 
+                success: false, 
+                message: 'No transaction data available for analysis' 
+            });
+        }
+        
+        // Transform rows into transaction objects
+        const allTransactions = rows.map((row, index) => ({
+            id: index + 2,
+            timestamp: row[0],
+            date: row[1],
+            user: row[2],
+            type: row[3], // This is the category
+            category: row[3],
+            description: row[4],
+            amount: parseFloat(row[5]) || 0,
+            entryType: row[6], // income or expense
+            currency: row[7] || 'INR',
+            isSaving: row[8] === 'YES'
+        }));
+        
+        // Filter by user if specified
+        const transactions = user 
+            ? allTransactions.filter(t => t.user && t.user.toLowerCase() === user.toLowerCase())
+            : allTransactions;
+        
+        // Filter for last 4 months only
+        const fourMonthsAgo = new Date();
+        fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
+        
+        const recentTransactions = transactions.filter(t => {
+            const txnDate = new Date(t.date);
+            return txnDate >= fourMonthsAgo;
+        });
+        
+        // Generate comprehensive insights
+        const insights = await generateFinancialInsights(recentTransactions, {
+            currentDate: new Date(),
+            userId: user
+        });
+        
+        res.json(insights);
+    } catch (error) {
+        console.error('Error generating financial insights:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to generate financial insights',
+            error: error.message 
+        });
+    }
+});
+
 app.get('/debug-sheets-access', async (req, res) => {
     try {
         if (!sheets || !auth) {
@@ -750,242 +820,6 @@ async function calculateNetWorth(user) {
     }
 }
 
-// Smart Finance Functions - Now using only main spreadsheet
-
-async function migrateHistoricalDataOneTime() {
-    // Since we can't access the historical spreadsheet directly,
-    // let's create a one-time migration with the data structure you provided
-    
-    console.log('Starting one-time historical data migration...');
-    
-    const historicalData = [
-        // January 2025 - Sanju
-        { user: 'Sanju', month: 'Jan', description: 'Ashi', amount: 20000, category: 'Income', note: '' },
-        { user: 'Sanju', month: 'Jan', description: 'Babu', amount: 20000, category: 'Other', note: 'loan' },
-        { user: 'Sanju', month: 'Jan', description: 'Babu IDFC', amount: 10000, category: 'Other', note: 'last month expense' },
-        { user: 'Sanju', month: 'Jan', description: 'Home', amount: 20000, category: 'Home', note: 'monthly' },
-        { user: 'Sanju', month: 'Jan', description: 'Rent', amount: 11000, category: 'Home', note: 'AHM' },
-        { user: 'Sanju', month: 'Jan', description: 'DSP', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Jan', description: 'Kerala', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Jan', description: 'CreditCard', amount: 4199, category: 'Utilities', note: 'GTPL recharge' },
-        { user: 'Sanju', month: 'Jan', description: 'Petrol', amount: 339, category: 'Transport', note: '' },
-        { user: 'Sanju', month: 'Jan', description: 'City square babu', amount: 1093, category: 'Other', note: '' },
-        { user: 'Sanju', month: 'Jan', description: 'Babu medicine', amount: 927, category: 'Healthcare', note: '' },
-        { user: 'Sanju', month: 'Jan', description: 'Babu passport size photo', amount: 100, category: 'Other', note: '' },
-        { user: 'Sanju', month: 'Jan', description: 'Kachori', amount: 130, category: 'Food', note: '' },
-        { user: 'Sanju', month: 'Jan', description: 'Fugga', amount: 110, category: 'Food', note: '' },
-        { user: 'Sanju', month: 'Jan', description: 'Xerox', amount: 24, category: 'Other', note: '' },
-        { user: 'Sanju', month: 'Jan', description: 'Waffels', amount: 120, category: 'Food', note: '' },
-        { user: 'Sanju', month: 'Jan', description: 'Babu cake', amount: 380, category: 'Food', note: '' },
-        
-        // January 2025 - Ashi
-        { user: 'Ashi', month: 'Jan', description: 'Milk', amount: 3467, category: 'Food', note: 'Nov and dec milk' },
-        { user: 'Ashi', month: 'Jan', description: 'Other', amount: 70, category: 'Other', note: 'Babu veg' },
-        { user: 'Ashi', month: 'Jan', description: 'Other', amount: 2950, category: 'Healthcare', note: 'Aadishree dava' },
-        { user: 'Ashi', month: 'Jan', description: 'Other', amount: 120, category: 'Other', note: 'Ashi moja' },
-        { user: 'Ashi', month: 'Jan', description: 'Sudexo', amount: 283, category: 'Food', note: 'Vegetable' },
-        { user: 'Ashi', month: 'Jan', description: 'Other', amount: 250, category: 'Other', note: 'Arti ne apya' },
-        { user: 'Ashi', month: 'Jan', description: 'Online Order', amount: 2000, category: 'Investment', note: 'SIP' },
-        { user: 'Ashi', month: 'Jan', description: 'Sudexo', amount: 294, category: 'Healthcare', note: 'Lectogen' },
-        { user: 'Ashi', month: 'Jan', description: 'Online Order', amount: 107, category: 'Other', note: 'Aadi shapoo tedibar vadu' },
-        { user: 'Ashi', month: 'Jan', description: 'Other', amount: 2000, category: 'Healthcare', note: 'Aadishree lectogen' },
-        { user: 'Ashi', month: 'Jan', description: 'Sudexo', amount: 234, category: 'Food', note: 'Babu veg' },
-        { user: 'Ashi', month: 'Jan', description: 'Shaak', amount: 70, category: 'Food', note: 'Babu veg' },
-        { user: 'Ashi', month: 'Jan', description: 'Other', amount: 1700, category: 'Shopping', note: 'Kapda lidha' },
-        { user: 'Ashi', month: 'Jan', description: 'Other', amount: 75, category: 'Transport', note: 'Uber' },
-        { user: 'Ashi', month: 'Jan', description: 'Other', amount: 70, category: 'Other', note: 'Ashi ibrow' },
-        { user: 'Ashi', month: 'Jan', description: 'Other', amount: 1440, category: 'Other', note: 'Urvashiben ne apya' },
-        { user: 'Ashi', month: 'Jan', description: 'Online Order', amount: 89, category: 'Shopping', note: 'Swigy dress mangavya' },
-        { user: 'Ashi', month: 'Jan', description: 'Shaak', amount: 236, category: 'Food', note: 'Sakbhaji' },
-
-        // February 2025 - Sanju  
-        { user: 'Sanju', month: 'Feb', description: 'Salary', amount: 85000, category: 'Income', note: 'Monthly salary' },
-        { user: 'Sanju', month: 'Feb', description: 'Home', amount: 20000, category: 'Home', note: 'monthly' },
-        { user: 'Sanju', month: 'Feb', description: 'Rent', amount: 11000, category: 'Home', note: 'AHM' },
-        { user: 'Sanju', month: 'Feb', description: 'DSP', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Feb', description: 'Kerala', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Feb', description: 'Electricity Bill', amount: 3500, category: 'Utilities', note: '' },
-        { user: 'Sanju', month: 'Feb', description: 'Petrol', amount: 2800, category: 'Transport', note: '' },
-        { user: 'Sanju', month: 'Feb', description: 'Insurance', amount: 8000, category: 'Insurance', note: 'Health insurance' },
-        { user: 'Sanju', month: 'Feb', description: 'Grocery', amount: 4500, category: 'Food', note: '' },
-
-        // February 2025 - Ashi
-        { user: 'Ashi', month: 'Feb', description: 'Milk', amount: 1800, category: 'Food', note: 'Monthly milk' },
-        { user: 'Ashi', month: 'Feb', description: 'Vegetables', amount: 3200, category: 'Food', note: 'Monthly vegetables' },
-        { user: 'Ashi', month: 'Feb', description: 'Medicine', amount: 1500, category: 'Healthcare', note: 'Aadishree medicine' },
-        { user: 'Ashi', month: 'Feb', description: 'Online Order', amount: 2000, category: 'Investment', note: 'SIP' },
-        { user: 'Ashi', month: 'Feb', description: 'Clothes', amount: 3500, category: 'Shopping', note: 'Winter clothes' },
-        { user: 'Ashi', month: 'Feb', description: 'Transport', amount: 800, category: 'Transport', note: 'Auto rickshaw' },
-
-        // March 2025 - Sanju
-        { user: 'Sanju', month: 'Mar', description: 'Salary', amount: 85000, category: 'Income', note: 'Monthly salary' },
-        { user: 'Sanju', month: 'Mar', description: 'Home', amount: 20000, category: 'Home', note: 'monthly' },
-        { user: 'Sanju', month: 'Mar', description: 'Rent', amount: 11000, category: 'Home', note: 'AHM' },
-        { user: 'Sanju', month: 'Mar', description: 'DSP', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Mar', description: 'Kerala', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Mar', description: 'Water Bill', amount: 800, category: 'Utilities', note: '' },
-        { user: 'Sanju', month: 'Mar', description: 'Internet', amount: 1200, category: 'Utilities', note: 'Broadband' },
-        { user: 'Sanju', month: 'Mar', description: 'Petrol', amount: 3200, category: 'Transport', note: '' },
-
-        // March 2025 - Ashi
-        { user: 'Ashi', month: 'Mar', description: 'Milk', amount: 1800, category: 'Food', note: 'Monthly milk' },
-        { user: 'Ashi', month: 'Mar', description: 'Vegetables', amount: 2800, category: 'Food', note: 'Monthly vegetables' },
-        { user: 'Ashi', month: 'Mar', description: 'Online Order', amount: 2000, category: 'Investment', note: 'SIP' },
-        { user: 'Ashi', month: 'Mar', description: 'School Fees', amount: 15000, category: 'Education', note: 'Aadishree school fees' },
-        { user: 'Ashi', month: 'Mar', description: 'Books', amount: 2500, category: 'Education', note: 'School books' },
-
-        // April 2025 - Sanju
-        { user: 'Sanju', month: 'Apr', description: 'Salary', amount: 85000, category: 'Income', note: 'Monthly salary' },
-        { user: 'Sanju', month: 'Apr', description: 'Home', amount: 20000, category: 'Home', note: 'monthly' },
-        { user: 'Sanju', month: 'Apr', description: 'Rent', amount: 11000, category: 'Home', note: 'AHM' },
-        { user: 'Sanju', month: 'Apr', description: 'DSP', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Apr', description: 'Kerala', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Apr', description: 'AC Service', amount: 2000, category: 'Home', note: 'Summer preparation' },
-        { user: 'Sanju', month: 'Apr', description: 'Petrol', amount: 3500, category: 'Transport', note: '' },
-
-        // April 2025 - Ashi
-        { user: 'Ashi', month: 'Apr', description: 'Milk', amount: 1800, category: 'Food', note: 'Monthly milk' },
-        { user: 'Ashi', month: 'Apr', description: 'Vegetables', amount: 3000, category: 'Food', note: 'Monthly vegetables' },
-        { user: 'Ashi', month: 'Apr', description: 'Online Order', amount: 2000, category: 'Investment', note: 'SIP' },
-        { user: 'Ashi', month: 'Apr', description: 'Summer Clothes', amount: 4000, category: 'Shopping', note: 'Summer collection' },
-        { user: 'Ashi', month: 'Apr', description: 'Medicine', amount: 1200, category: 'Healthcare', note: 'Regular medicine' },
-
-        // May 2025 - Sanju
-        { user: 'Sanju', month: 'May', description: 'Salary', amount: 85000, category: 'Income', note: 'Monthly salary' },
-        { user: 'Sanju', month: 'May', description: 'Home', amount: 20000, category: 'Home', note: 'monthly' },
-        { user: 'Sanju', month: 'May', description: 'Rent', amount: 11000, category: 'Home', note: 'AHM' },
-        { user: 'Sanju', month: 'May', description: 'DSP', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'May', description: 'Kerala', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'May', description: 'Electricity Bill', amount: 4500, category: 'Utilities', note: 'Summer high usage' },
-        { user: 'Sanju', month: 'May', description: 'Petrol', amount: 4000, category: 'Transport', note: '' },
-
-        // May 2025 - Ashi
-        { user: 'Ashi', month: 'May', description: 'Milk', amount: 1800, category: 'Food', note: 'Monthly milk' },
-        { user: 'Ashi', month: 'May', description: 'Vegetables', amount: 3200, category: 'Food', note: 'Monthly vegetables' },
-        { user: 'Ashi', month: 'May', description: 'Online Order', amount: 2000, category: 'Investment', note: 'SIP' },
-        { user: 'Ashi', month: 'May', description: 'Vacation Trip', amount: 25000, category: 'Travel', note: 'Family vacation' },
-        { user: 'Ashi', month: 'May', description: 'Hotel', amount: 15000, category: 'Travel', note: 'Vacation hotel' },
-
-        // June 2025 - Sanju
-        { user: 'Sanju', month: 'Jun', description: 'Salary', amount: 85000, category: 'Income', note: 'Monthly salary' },
-        { user: 'Sanju', month: 'Jun', description: 'Home', amount: 20000, category: 'Home', note: 'monthly' },
-        { user: 'Sanju', month: 'Jun', description: 'Rent', amount: 11000, category: 'Home', note: 'AHM' },
-        { user: 'Sanju', month: 'Jun', description: 'DSP', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Jun', description: 'Kerala', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Jun', description: 'Car Service', amount: 8000, category: 'Transport', note: 'Major service' },
-        { user: 'Sanju', month: 'Jun', description: 'Petrol', amount: 3800, category: 'Transport', note: '' },
-
-        // June 2025 - Ashi
-        { user: 'Ashi', month: 'Jun', description: 'Milk', amount: 1800, category: 'Food', note: 'Monthly milk' },
-        { user: 'Ashi', month: 'Jun', description: 'Vegetables', amount: 2900, category: 'Food', note: 'Monthly vegetables' },
-        { user: 'Ashi', month: 'Jun', description: 'Online Order', amount: 2000, category: 'Investment', note: 'SIP' },
-        { user: 'Ashi', month: 'Jun', description: 'School Admission', amount: 12000, category: 'Education', note: 'New session fees' },
-        { user: 'Ashi', month: 'Jun', description: 'Uniform', amount: 3000, category: 'Education', note: 'School uniform' },
-
-        // July 2025 - Sanju
-        { user: 'Sanju', month: 'Jul', description: 'Salary', amount: 85000, category: 'Income', note: 'Monthly salary' },
-        { user: 'Sanju', month: 'Jul', description: 'Home', amount: 20000, category: 'Home', note: 'monthly' },
-        { user: 'Sanju', month: 'Jul', description: 'Rent', amount: 11000, category: 'Home', note: 'AHM' },
-        { user: 'Sanju', month: 'Jul', description: 'DSP', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Jul', description: 'Kerala', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Jul', description: 'Monsoon Prep', amount: 3000, category: 'Home', note: 'Waterproofing' },
-        { user: 'Sanju', month: 'Jul', description: 'Petrol', amount: 3200, category: 'Transport', note: '' },
-
-        // July 2025 - Ashi
-        { user: 'Ashi', month: 'Jul', description: 'Milk', amount: 1800, category: 'Food', note: 'Monthly milk' },
-        { user: 'Ashi', month: 'Jul', description: 'Vegetables', amount: 3100, category: 'Food', note: 'Monthly vegetables' },
-        { user: 'Ashi', month: 'Jul', description: 'Online Order', amount: 2000, category: 'Investment', note: 'SIP' },
-        { user: 'Ashi', month: 'Jul', description: 'Monsoon Clothes', amount: 2500, category: 'Shopping', note: 'Rainwear' },
-        { user: 'Ashi', month: 'Jul', description: 'Medicine', amount: 1800, category: 'Healthcare', note: 'Monsoon medicines' },
-
-        // August 2025 - Sanju
-        { user: 'Sanju', month: 'Aug', description: 'Salary', amount: 85000, category: 'Income', note: 'Monthly salary' },
-        { user: 'Sanju', month: 'Aug', description: 'Home', amount: 20000, category: 'Home', note: 'monthly' },
-        { user: 'Sanju', month: 'Aug', description: 'Rent', amount: 11000, category: 'Home', note: 'AHM' },
-        { user: 'Sanju', month: 'Aug', description: 'DSP', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Aug', description: 'Kerala', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Aug', description: 'Festival Shopping', amount: 8000, category: 'Shopping', note: 'Raksha Bandhan' },
-        { user: 'Sanju', month: 'Aug', description: 'Petrol', amount: 3600, category: 'Transport', note: '' },
-
-        // August 2025 - Ashi
-        { user: 'Ashi', month: 'Aug', description: 'Milk', amount: 1800, category: 'Food', note: 'Monthly milk' },
-        { user: 'Ashi', month: 'Aug', description: 'Vegetables', amount: 3000, category: 'Food', note: 'Monthly vegetables' },
-        { user: 'Ashi', month: 'Aug', description: 'Online Order', amount: 2000, category: 'Investment', note: 'SIP' },
-        { user: 'Ashi', month: 'Aug', description: 'Festival Clothes', amount: 5000, category: 'Shopping', note: 'Festival wear' },
-        { user: 'Ashi', month: 'Aug', description: 'Gifts', amount: 3000, category: 'Shopping', note: 'Festival gifts' },
-
-        // September 2025 - Sanju
-        { user: 'Sanju', month: 'Sep', description: 'Salary', amount: 85000, category: 'Income', note: 'Monthly salary' },
-        { user: 'Sanju', month: 'Sep', description: 'Home', amount: 20000, category: 'Home', note: 'monthly' },
-        { user: 'Sanju', month: 'Sep', description: 'Rent', amount: 11000, category: 'Home', note: 'AHM' },
-        { user: 'Sanju', month: 'Sep', description: 'DSP', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Sep', description: 'Kerala', amount: 5000, category: 'Investment', note: 'SIP' },
-        { user: 'Sanju', month: 'Sep', description: 'Office Equipment', amount: 12000, category: 'Other', note: 'Laptop upgrade' },
-        { user: 'Sanju', month: 'Sep', description: 'Petrol', amount: 3400, category: 'Transport', note: '' },
-
-        // September 2025 - Ashi
-        { user: 'Ashi', month: 'Sep', description: 'Milk', amount: 1800, category: 'Food', note: 'Monthly milk' },
-        { user: 'Ashi', month: 'Sep', description: 'Vegetables', amount: 2800, category: 'Food', note: 'Monthly vegetables' },
-        { user: 'Ashi', month: 'Sep', description: 'Online Order', amount: 2000, category: 'Investment', note: 'SIP' },
-        { user: 'Ashi', month: 'Sep', description: 'School Supplies', amount: 4000, category: 'Education', note: 'New term supplies' },
-        { user: 'Ashi', month: 'Sep', description: 'Health Checkup', amount: 5000, category: 'Healthcare', note: 'Annual checkup' }
-    ];
-
-    if (!sheets || !SPREADSHEET_ID) {
-        return { success: false, message: 'Google Sheets not available' };
-    }
-
-    try {
-        const migrationData = [];
-        let migratedCount = 0;
-
-        for (const transaction of historicalData) {
-            const { user, description, amount, month, category, note } = transaction;
-            
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
-            const monthIndex = monthNames.indexOf(month) + 1;
-            
-            const timestamp = new Date().toISOString();
-            const entryDate = `2025-${String(monthIndex).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`;
-            const entryType = category === 'Income' ? 'income' : 'expense';
-            const fullDescription = description + (note ? ` - ${note}` : '');
-
-            migrationData.push([
-                timestamp,
-                entryDate,
-                user,
-                category,
-                fullDescription,
-                amount,
-                entryType,
-                'INR'
-            ]);
-            migratedCount++;
-        }
-
-        // Batch insert all data
-        await sheets.spreadsheets.values.append({
-            spreadsheetId: SPREADSHEET_ID,
-            range: 'Expenses!A:H',
-            valueInputOption: 'RAW',
-            resource: {
-                values: migrationData
-            }
-        });
-
-        console.log(`✅ Successfully migrated ${migratedCount} historical transactions`);
-        
-        return {
-            success: true,
-            message: `Successfully migrated ${migratedCount} historical transactions to main spreadsheet. Historical spreadsheet references can now be removed.`,
-            migratedCount
-        };
-    } catch (error) {
-        console.error('Error in one-time migration:', error);
-        return { success: false, message: error.message };
-    }
-}
-
 async function getSmartInsights() {
     try {
         // Get current month data
@@ -1034,6 +868,126 @@ async function getSmartInsights() {
         return { success: true, insights };
     } catch (error) {
         console.error('Error in getSmartInsights:', error);
+        return { success: false, message: error.message };
+    }
+}
+
+// Delete transaction endpoint
+app.delete('/delete-transaction/:id', async (req, res) => {
+    try {
+        const transactionId = req.params.id;
+        console.log(`Attempting to delete transaction with ID: ${transactionId}`);
+        
+        // For simplicity, we'll mark the transaction as deleted by updating it
+        // In a real implementation, you might want to move it to a "deleted" sheet or mark it as deleted
+        const result = await deleteTransaction(transactionId);
+        
+        if (result.success) {
+            res.json({ success: true, message: 'Transaction deleted successfully' });
+        } else {
+            res.status(400).json({ success: false, message: result.message || 'Failed to delete transaction' });
+        }
+    } catch (error) {
+        console.error('Error deleting transaction:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Update transaction endpoint
+app.put('/update-transaction/:id', async (req, res) => {
+    try {
+        const transactionId = req.params.id;
+        const updatedData = req.body;
+        console.log(`Attempting to update transaction with ID: ${transactionId}`, updatedData);
+        
+        const result = await updateTransaction(transactionId, updatedData);
+        
+        if (result.success) {
+            res.json({ success: true, message: 'Transaction updated successfully' });
+        } else {
+            res.status(400).json({ success: false, message: result.message || 'Failed to update transaction' });
+        }
+    } catch (error) {
+        console.error('Error updating transaction:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+async function deleteTransaction(transactionId) {
+    try {
+        if (!sheets || !SPREADSHEET_ID) {
+            return { success: false, message: 'Google Sheets not available' };
+        }
+        
+        // Transaction ID is the row number in the Expenses sheet (1-based, accounting for header)
+        const rowNumber = parseInt(transactionId);
+        
+        if (isNaN(rowNumber) || rowNumber < 2) {
+            return { success: false, message: 'Invalid transaction ID' };
+        }
+        
+        // Clear the row content in the Expenses sheet
+        const range = `Expenses!A${rowNumber}:I${rowNumber}`;
+        
+        console.log(`Deleting transaction from ${range}`);
+        
+        await sheets.spreadsheets.values.clear({
+            spreadsheetId: SPREADSHEET_ID,
+            range: range,
+        });
+        
+        console.log(`Successfully deleted transaction from row ${rowNumber}`);
+        return { success: true };
+    } catch (error) {
+        console.error('Error in deleteTransaction:', error);
+        return { success: false, message: error.message };
+    }
+}
+
+async function updateTransaction(transactionId, updatedData) {
+    try {
+        if (!sheets || !SPREADSHEET_ID) {
+            return { success: false, message: 'Google Sheets not available' };
+        }
+        
+        // Transaction ID is the row number in the Expenses sheet (1-based, accounting for header)
+        const rowNumber = parseInt(transactionId);
+        
+        if (isNaN(rowNumber) || rowNumber < 2) {
+            return { success: false, message: 'Invalid transaction ID' };
+        }
+        
+        // Prepare the updated row data matching the Expenses sheet structure:
+        // Timestamp, Date, User, Type, Description, Amount, Entry Type, Currency, Is Saving
+        const rowData = [
+            new Date().toISOString(), // Timestamp - update to current
+            updatedData.date || '',
+            updatedData.user || '',
+            updatedData.category || updatedData.type || '', // Type/Category
+            updatedData.description || '',
+            parseFloat(updatedData.amount) || 0,
+            updatedData.entryType || 'expense',
+            updatedData.currency || 'INR',
+            updatedData.isSaving ? 'YES' : 'NO'
+        ];
+        
+        const range = `Expenses!A${rowNumber}:I${rowNumber}`;
+        
+        console.log(`Updating transaction at ${range}`, rowData);
+        
+        await sheets.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID,
+            range: range,
+            valueInputOption: 'RAW',
+            resource: {
+                values: [rowData]
+            }
+        });
+        
+        console.log(`Successfully updated transaction in row ${rowNumber}`);
+        return { success: true };
+    } catch (error) {
+        console.error('Error in updateTransaction:', error);
         return { success: false, message: error.message };
     }
 }
